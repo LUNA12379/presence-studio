@@ -78,7 +78,7 @@ sealed class StudioForm : Form {
         timer.Tick += async delegate { if (Program.ShowEvent != null && Program.ShowEvent.WaitOne(0)) ShowStudio(); await Poll(); };
     }
     async Task EnsureServer() {
-        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.1.0")) return;
+        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.2.0")) return;
             // Upgrade only this application's v1 bridge, preserving its pairing key.
             if (health.Contains("youtube-discord-local")) {
                 var old = Data.Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Program.SettingsFile));
@@ -91,7 +91,7 @@ sealed class StudioForm : Form {
         } catch (HttpRequestException) {} catch (TaskCanceledException) {}
         var info = new ProcessStartInfo("node.exe", "\"" + Path.Combine(Program.Root, "server.mjs") + "\"") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, WorkingDirectory = Program.Root };
         Process.Start(info);
-        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.1.0")) return; } catch {} }
+        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.2.0")) return; } catch {} }
         throw new Exception("연결 프로그램을 시작하지 못했습니다. Node.js가 설치되어 있는지 확인하세요.");
     }
     async Task Initialize() {
@@ -168,6 +168,26 @@ sealed class StudioForm : Form {
     async Task Verify() {
         Directory.CreateDirectory(verifyPath);
         await Task.Delay(2200);
+        if (await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#guideDialog').open") == "true") {
+            using (var stream = File.Create(Path.Combine(verifyPath, "startup-guide.png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+        }
+        bool localImageVerified = false;
+        if (Environment.GetEnvironmentVariable("PRESENCE_STUDIO_VERIFY_MUTATIONS") == "1" && !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PRESENCE_STUDIO_DATA_DIR"))) {
+            await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(Path.Combine(Program.Root, "test", "ui-workflow.js")));
+            bool finished = false;
+            for (int i = 0; i < 100; i++) { await Task.Delay(150); if (await view.CoreWebView2.ExecuteScriptAsync("window.studioVerification && window.studioVerification.done === true") == "true") { finished = true; break; } }
+            if (!finished) throw new Exception("Image / guide UI workflow timed out");
+            if (await view.CoreWebView2.ExecuteScriptAsync("!!window.studioVerification.error") == "true") throw new Exception(await view.CoreWebView2.ExecuteScriptAsync("window.studioVerification.error"));
+            File.WriteAllText(Path.Combine(verifyPath, "workflow.json"), await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioVerification)"));
+            await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#imageDrop').scrollIntoView({block:'center'})"); await Task.Delay(200);
+            using (var stream = File.Create(Path.Combine(verifyPath, "custom-images.png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+            var imageState = await Api("status");
+            var imageStyle = Data.Obj(Data.Get(Data.Obj(Data.Get(imageState, "config")), "overlay")); imageStyle["enabled"] = true;
+            overlay.UpdateState(Data.Obj(Data.Get(imageState, "display")), imageStyle, true); await Task.Delay(900);
+            localImageVerified = overlay.HasImage; if (!localImageVerified) throw new Exception("Native overlay did not load the saved image");
+            using (var bitmap = new Bitmap(overlay.Width, overlay.Height)) { overlay.DrawToBitmap(bitmap, new Rectangle(Point.Empty, overlay.Size)); bitmap.Save(Path.Combine(verifyPath, "local-image-overlay.png"), ImageFormat.Png); }
+        }
+        await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#guideDialog').close();document.querySelector('[data-panel=home]').click()");
         string result = await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify({title:document.title,ready:!!document.querySelector('#sourceMode'),text:document.body.innerText.slice(0,3500)})");
         File.WriteAllText(Path.Combine(verifyPath, "ui.json"), result);
         using (var stream = File.Create(Path.Combine(verifyPath, "dashboard.png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
@@ -192,7 +212,7 @@ sealed class StudioForm : Form {
         bool passesClicks = (Native.GetWindowLong(overlay.Handle, -20) & 0x20) != 0;
         style["clickThrough"] = false; style["theme"] = "compact"; overlay.UpdateState(sample, style, true);
         bool restoredMouse = (Native.GetWindowLong(overlay.Handle, -20) & 0x20) == 0;
-        File.WriteAllText(Path.Combine(verifyPath, "native.json"), Data.Json.Serialize(new { overlayWidth = overlay.Width, overlayHeight = overlay.Height, overlayVisible = overlay.Visible, passesClicks = passesClicks, restoredMouse = restoredMouse, customPreviewUpdated = customCheck == "true" }));
+        File.WriteAllText(Path.Combine(verifyPath, "native.json"), Data.Json.Serialize(new { overlayWidth = overlay.Width, overlayHeight = overlay.Height, overlayVisible = overlay.Visible, passesClicks = passesClicks, restoredMouse = restoredMouse, customPreviewUpdated = customCheck == "true", localImageVerified = localImageVerified }));
         exiting = true; Close();
     }
     protected override void WndProc(ref Message message) {
@@ -209,6 +229,7 @@ sealed class OverlayForm : Form {
     readonly HttpClient images = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
     Dictionary<string, object> data = new Dictionary<string, object>(), style = new Dictionary<string, object>();
     Image thumbnail; string imageUrl = ""; bool dragging, through; double lastX = double.NaN, lastY = double.NaN;
+    public bool HasImage { get { return thumbnail != null; } }
     public OverlayForm(Func<Point, Task> savePosition, Action showStudio) {
         this.savePosition = savePosition; this.showStudio = showStudio;
         FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; TopMost = true;
@@ -247,7 +268,7 @@ sealed class OverlayForm : Form {
     async Task LoadImage(string url) {
         Image next = null;
         try {
-            Uri uri; if (Uri.TryCreate(url, UriKind.Absolute, out uri) && uri.Scheme == "https") {
+            Uri uri; if (Uri.TryCreate(url, UriKind.Absolute, out uri) && (uri.Scheme == "https" || (uri.Scheme == "http" && uri.Host == "127.0.0.1" && uri.Port == 49832 && uri.AbsolutePath.StartsWith("/media/")))) {
                 using (var response = await images.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead)) {
                     response.EnsureSuccessStatusCode();
                     if (response.Content.Headers.ContentLength.GetValueOrDefault() > 5 * 1024 * 1024) throw new Exception();

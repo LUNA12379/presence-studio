@@ -10,22 +10,24 @@ import { SessionStore, activityChanged } from './lib/presence.mjs';
 import { DEFAULTS, validateConfig, validatePreset } from './lib/settings.mjs';
 import { resolveActivity } from './lib/activity.mjs';
 import { userDataDirectory, loadUserSettings, saveSettings } from './lib/storage.mjs';
+import { ImageLibrary, MAX_IMAGE_BYTES, effectiveApplicationId, fetchDiscordAssets } from './lib/images.mjs';
 export { DEFAULTS, validateConfig } from './lib/settings.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-const VERSION = '2.1.0';
+const VERSION = '2.2.0';
 export function loadSettings(root = ROOT, dataDir = userDataDirectory()) { return loadUserSettings(root, dataDir); }
 function secretMatches(value, expected) {
   if (typeof value !== 'string' || typeof expected !== 'string') return false;
   const a = Buffer.from(value), b = Buffer.from(expected);
   return a.length === b.length && timingSafeEqual(a, b);
 }
-async function jsonBody(req) {
+async function binaryBody(req, limit) {
   let size = 0; const chunks = [];
-  for await (const chunk of req) { size += chunk.length; if (size > 32768) throw new Error('Request too large'); chunks.push(chunk); }
-  return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+  for await (const chunk of req) { size += chunk.length; if (size > limit) throw new Error('파일 또는 요청이 너무 큽니다.'); chunks.push(chunk); }
+  return Buffer.concat(chunks);
 }
+async function jsonBody(req) { return JSON.parse((await binaryBody(req,32768)).toString('utf8')); }
 function launch(executable, args = []) {
   const child = spawn(executable, args, { detached: true, stdio: 'ignore', windowsHide: true });
   child.on('error', () => {}); child.unref();
@@ -34,7 +36,7 @@ function autostartExists(fallback) {
   if (process.platform !== 'win32' || !process.env.APPDATA) return fallback;
   return fs.existsSync(path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'YouTube Discord.lnk'));
 }
-export function createBridge({ root = ROOT, dataDir = userDataDirectory(), config = loadSettings(root, dataDir), port = 49832, rpc = new DiscordRPC(), clock = Date.now } = {}) {
+export function createBridge({ root = ROOT, dataDir = userDataDirectory(), config = loadSettings(root, dataDir), port = 49832, rpc = new DiscordRPC(), clock = Date.now, assetFetcher = fetchDiscordAssets } = {}) {
   const sessions = new SessionStore();
   let activeConfig = validateConfig({}, config);
   let lastExtensionAt = 0, lastAck, lastSentAt = 0, lastAttempt = 0, lastConnect = 0;
@@ -42,17 +44,23 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
   let manualStartedAt = clock(), desktopLastAt = 0, nativeInfo = {}, configRevision = 0;
   let timer, configQueue = Promise.resolve();
   const origin = `http://127.0.0.1:${port}`;
+  const images = new ImageLibrary(dataDir), assetCache = new Map();
+  const imageList = () => images.list().map(item=>({...item,url:images.url(item.id,activeConfig.token,origin)}));
   rpc.on('disconnected', () => { lastAck = undefined; });
   rpc.on('ready', () => { lastAck = undefined; connectionError = ''; });
-  const resolved = () => resolveActivity(sessions, activeConfig, manualStartedAt, clock());
+  const resolved = () => {
+    const value=resolveActivity(sessions, activeConfig, manualStartedAt, clock());
+    if(value.display?.source==='manual'&&activeConfig.manual.imageId)value.display.image=images.url(activeConfig.manual.imageId,activeConfig.token,origin)||value.display.image;
+    return value;
+  };
   async function tick() {
-    if (shuttingDown || !activeConfig.applicationId) return;
+    if (shuttingDown || !effectiveApplicationId(activeConfig)) return;
     const now = clock();
     if (!rpc.ready) {
       if (connecting || now - lastConnect < 5000) return;
       connecting = true; lastConnect = now;
       const revision = configRevision;
-      try { await rpc.connect(activeConfig.applicationId); if (revision === configRevision) connectionError = ''; }
+      try { await rpc.connect(effectiveApplicationId(activeConfig)); if (revision === configRevision) connectionError = ''; }
       catch (error) { if (revision === configRevision) connectionError = error.message; }
       finally { connecting = false; }
       return;
@@ -78,7 +86,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       current, display, published: Boolean(rpc.ready && lastAck), lastSentAt, manualStartedAt,
       sessions: [...sessions.sessions.values()].map(s => ({ tabId: s.tabId, title: s.title, channel: s.channel, source: s.source, paused: s.paused })),
       overlayUrl: `${origin}/overlay#key=${overlayKey}`, extensionPath: path.join(dataDir, 'edge-extension'), appPath: root,
-      applicationIdConfigured: Boolean(activeConfig.applicationId), settingsPath: path.join(dataDir, 'config.json') };
+      applicationIdConfigured: Boolean(effectiveApplicationId(activeConfig)), effectiveApplicationId:effectiveApplicationId(activeConfig), settingsPath: path.join(dataDir, 'config.json'), images:imageList() };
   }
   function updateConfig(body) {
     const result = configQueue.then(() => commitConfig(body));
@@ -87,11 +95,12 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
   }
   async function commitConfig(body) {
     const next = validateConfig(body, activeConfig);
+    if(Object.hasOwn(body,'manual')&&next.manual.imageId&&!images.exists(next.manual.imageId))throw new Error('저장된 이미지를 찾을 수 없어요. 다시 선택해 주세요.');
     if (Object.hasOwn(body, 'autostart') && next.autostart !== autostartExists(activeConfig.autostart)) {
       const powershell = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
       await execFileAsync(powershell, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'Autostart.ps1'), ...(next.autostart ? ['-Enable'] : [])], { windowsHide: true, timeout: 10000 });
     }
-    const reconnect = next.applicationId !== activeConfig.applicationId;
+    const reconnect = effectiveApplicationId(next) !== effectiveApplicationId(activeConfig);
     if (next.sourceMode === 'manual' && (activeConfig.sourceMode !== 'manual' || JSON.stringify(next.manual) !== JSON.stringify(activeConfig.manual))) manualStartedAt = clock();
     saveSettings(dataDir, next); activeConfig = next; configRevision++;
     if (reconnect) { rpc.close(); lastAck = undefined; lastConnect = 0; }
@@ -120,6 +129,11 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       }
     }
     if (pathname === '/api/health' && req.method === 'GET') return respond(res, 200, { app: 'youtube-discord-local', version: VERSION });
+    if(pathname.startsWith('/media/')&&req.method==='GET') {
+      const id=pathname.slice(7),key=new URL(req.url,origin).searchParams.get('key');
+      if(!images.exists(id)||!secretMatches(key,images.signature(id,activeConfig.token)))return respond(res,404,{error:'Image not found'});
+      return respond(res,200,fs.readFileSync(images.filename(id)),'image/png');
+    }
     if (pathname === '/api/overlay' && req.method === 'GET') {
       if (!secretMatches(req.headers['x-overlay-key'], activeConfig.overlayKey)) return respond(res, 401, { error: 'Overlay key required' });
       return respond(res, 200, { display: resolved().display, style: activeConfig.overlay, enabled: activeConfig.enabled });
@@ -128,6 +142,20 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       if (!secretMatches(req.headers['x-bridge-token'], activeConfig.token)) return respond(res, 401, { error: 'Pairing required' });
       try {
         if (req.method === 'GET' && pathname === '/api/status') return respond(res, 200, status());
+        if(req.method==='POST'&&pathname==='/api/images') {
+          if(req.headers['content-type']!=='image/png')throw new Error('PNG 이미지가 필요합니다.');
+          const bytes=await binaryBody(req,MAX_IMAGE_BYTES),name=decodeURIComponent(req.headers['x-image-name']||'이미지');
+          const image=images.importPng(bytes,name);return respond(res,200,{image:{...image,url:images.url(image.id,activeConfig.token,origin)},images:imageList()});
+        }
+        if(req.method==='POST'&&pathname==='/api/images/open-folder') {
+          fs.mkdirSync(images.directory,{recursive:true});launch('explorer.exe',[images.directory]);return respond(res,200,{ok:true});
+        }
+        if(req.method==='GET'&&pathname==='/api/discord-assets') {
+          const applicationId=activeConfig.customApplicationId||activeConfig.applicationId;
+          let cached=assetCache.get(applicationId);
+          if(!cached||clock()-cached.at>10000){const assets=await assetFetcher(applicationId);cached={at:clock(),assets};assetCache.set(applicationId,cached);}
+          return respond(res,200,{applicationId,assets:cached.assets});
+        }
         if (req.method === 'POST' && pathname === '/api/session') {
           sessions.update(await jsonBody(req), clock()); lastExtensionAt = clock(); return respond(res, 200, { ok: true });
         }
@@ -142,6 +170,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
           const body = await jsonBody(req); const found = activeConfig.presets.find(p => p.id === body.id);
           if (!found && activeConfig.presets.length >= 30) throw new Error('프리셋은 최대 30개까지 저장할 수 있습니다.');
           const preset = validatePreset(body, found?.id);
+          if(preset.manual.imageId&&!images.exists(preset.manual.imageId))throw new Error('저장된 이미지를 다시 선택해 주세요.');
           const next = { ...activeConfig, presets: found ? activeConfig.presets.map(p => p.id === found.id ? preset : p) : [...activeConfig.presets, preset] };
           saveSettings(dataDir, next); activeConfig = next; return respond(res, 200, status());
         }
@@ -175,7 +204,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       const html = fs.readFileSync(path.join(root, 'ui', 'index.html'), 'utf8').replace('__BRIDGE_TOKEN__', activeConfig.token);
       return respond(res, 200, html, 'text/html; charset=utf-8');
     }
-    const assets = { '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
+    const assets = { '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
       '/overlay.js': ['overlay.js', 'text/javascript'], '/overlay.css': ['overlay.css', 'text/css'], '/icon.svg': ['icon.svg', 'image/svg+xml'] };
     if (assets[pathname]) {
       const [file, type] = assets[pathname]; return respond(res, 200, fs.readFileSync(path.join(root, 'ui', file)), `${type}; charset=utf-8`);

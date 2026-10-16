@@ -11,17 +11,17 @@ async function api(endpoint, body) {
   const data = await response.json(); if (!response.ok) throw new Error(data.error || '연결을 확인해 주세요.'); return data;
 }
 function mutate(endpoint, body) { const request = queue.then(() => api(endpoint, body)); queue = request.catch(() => {}); return request; }
-function panel(name) { if (!names[name]) return; document.querySelectorAll('.panel').forEach(item => { item.hidden = item.id !== `panel-${name}`; }); document.querySelectorAll('.nav').forEach(item => item.classList.toggle('active', item.dataset.panel === name)); $('pageName').textContent = names[name]; window.scrollTo(0, 0); if (name === 'overlay') fitOverlay(); }
+function panel(name) { if (!names[name]) return; document.querySelectorAll('.panel').forEach(item => { item.hidden = item.id !== `panel-${name}`; }); document.querySelectorAll('.nav').forEach(item => item.classList.toggle('active', item.dataset.panel === name)); $('pageName').textContent = names[name]; window.scrollTo(0, 0); if (name === 'overlay') fitOverlay(); if(name==='custom'&&latest&&!assetsApplicationId&&!$('refreshDiscordImages').disabled)loadDiscordImages(); }
 document.querySelectorAll('[data-panel]').forEach(button => button.addEventListener('click', () => panel(button.dataset.panel)));
-function getManual() { return { title: $('manualTitle').value.trim(), state: $('manualState').value.trim(), type: $('manualType').value, imageUrl: $('manualImage').value.trim(), buttonLabel: $('manualButtonLabel').value.trim(), buttonUrl: $('manualButtonUrl').value.trim(), timer: $('manualTimer').value, minutes: Number($('manualMinutes').value) }; }
-function setManual(m) { for (const [id,key] of Object.entries({ manualTitle:'title',manualState:'state',manualType:'type',manualImage:'imageUrl',manualButtonLabel:'buttonLabel',manualButtonUrl:'buttonUrl',manualTimer:'timer',manualMinutes:'minutes' })) $(id).value = m[key]; previewManual(); }
+function getManual() { return { title: $('manualTitle').value.trim(), state: $('manualState').value.trim(), type: $('manualType').value, imageUrl: $('manualImage').value.trim(), ...mediaFields(), buttonLabel: $('manualButtonLabel').value.trim(), buttonUrl: $('manualButtonUrl').value.trim(), timer: $('manualTimer').value, minutes: Number($('manualMinutes').value) }; }
+function setManual(m) { for (const [id,key] of Object.entries({ manualTitle:'title',manualState:'state',manualType:'type',manualImage:'imageUrl',manualButtonLabel:'buttonLabel',manualButtonUrl:'buttonUrl',manualTimer:'timer',manualMinutes:'minutes' })) $(id).value = m[key]??''; setMedia(m);previewManual(); }
 function previewManual() {
   const m = getManual(); $('manualPreviewTitle').textContent = m.title || '나만의 활동'; $('manualPreviewState').textContent = m.state || '상태 문구';
   $('manualPreviewType').textContent = { playing:'플레이 중',listening:'듣는 중',watching:'시청 중' }[m.type];
   $('manualPreviewTimer').textContent = m.timer === 'none' ? '' : m.timer === 'countdown' ? `${m.minutes || 25}분 남음` : '00:00 경과';
   $('minutesRow').hidden = m.timer !== 'countdown'; $('manualPreviewButton').hidden = !m.buttonUrl; $('manualPreviewButton').textContent = m.buttonLabel || '열기';
-  const validImage = /^https:\/\//i.test(m.imageUrl) && $('manualPreviewImage').dataset.failed !== m.imageUrl; $('manualPreviewIcon').hidden = validImage; $('manualPreviewImage').hidden = !validImage;
-  if (validImage && $('manualPreviewImage').getAttribute('src') !== m.imageUrl) $('manualPreviewImage').src = m.imageUrl;
+  const imageUrl=manualImageUrl(m),validImage=!!imageUrl&&$('manualPreviewImage').dataset.failed!==imageUrl; $('manualPreviewIcon').hidden = validImage; $('manualPreviewImage').hidden = !validImage;
+  if (validImage && $('manualPreviewImage').getAttribute('src') !== imageUrl) $('manualPreviewImage').src = imageUrl;
 }
 $('manualPreviewImage').addEventListener('error', () => { $('manualPreviewImage').dataset.failed = $('manualPreviewImage').getAttribute('src'); $('manualPreviewImage').hidden = true; $('manualPreviewIcon').hidden = false; });
 function overlayValues() { return { enabled:$('overlayEnabled').checked,theme:$('overlayTheme').value,accent:$('overlayAccent').value,width:Number($('overlayWidth').value),opacity:Number($('overlayOpacity').value),showImage:$('overlayImage').checked,showProgress:$('overlayProgress').checked,hideWhenIdle:$('overlayIdle').checked,locked:$('overlayLocked').checked,clickThrough:$('overlayClick').checked }; }
@@ -30,7 +30,7 @@ function fitOverlay() { if (!latest) return; const width = latest.config.overlay
 function hydrate(data) {
   const c = data.config;
   if (!dirty.has('manualForm')) { setManual(c.manual); hydrated.add('manualForm'); }
-  if (!dirty.has('identityForm')) { $('applicationId').value=c.applicationId; }
+  if (!dirty.has('identityForm')) { $('applicationId').value=c.applicationId; $('customApplicationId').value=c.customApplicationId||''; }
   if (!dirty.has('settingsForm')) { $('mode').value=c.mode; $('pauseSeconds').value=c.pauseSeconds; $('excludedKeywords').value=c.excludedKeywords.join('\n'); $('autostart').checked=c.autostart; hydrated.add('settingsForm'); }
   if (!dirty.has('overlayForm')) {
     const s=c.overlay; $('overlayTheme').value=s.theme; $('overlayAccent').value=s.accent; $('overlayWidth').value=s.width; $('overlayOpacity').value=s.opacity;
@@ -59,7 +59,7 @@ function presetCard(p, starter=false) {
 }
 function renderPresets(data){const signature=JSON.stringify(data.config.presets);if(signature===presetsSignature)return;presetsSignature=signature;$('presetsList').replaceChildren();if(!data.config.presets.length){const empty=document.createElement('div');empty.className='empty-presets';empty.textContent='아직 저장한 프리셋이 없어요. 직접 꾸미기에서 첫 활동을 저장해 보세요.';$('presetsList').append(empty);}for(const preset of data.config.presets)$('presetsList').append(presetCard(preset));}
 function render(data) {
-  const firstLoad=!latest; latest=data; $('offline').hidden=true;hydrate(data);
+  const firstLoad=!latest; latest=data; $('offline').hidden=true;syncMedia(data);hydrate(data);
   $('setupNotice').hidden=data.applicationIdConfigured;
   if(firstLoad&&!data.applicationIdConfigured)panel('settings');
   $('enabled').checked=data.config.enabled;$('quickOverlay').checked=data.config.overlay.enabled;$('sourceMode').value=data.config.sourceMode;
@@ -80,6 +80,7 @@ function render(data) {
   const previewUrl=data.overlayUrl.replace('/overlay#','/overlay?preview=1#');if($('overlayPreview').getAttribute('src')!==previewUrl)$('overlayPreview').src=previewUrl;fitOverlay();
   $('hotkeyStatus').textContent=!data.desktopConnected?'단축키는 데스크톱 앱 실행 중에 사용할 수 있어요.':(!data.nativeInfo.hotkeyRegistered||!data.nativeInfo.overlayHotkeyRegistered)?'다른 앱이 일부 단축키를 사용 중이에요. 트레이 메뉴를 이용해 주세요.':'두 단축키가 모두 등록되어 있어요.';
   renderSessions(data);renderPresets(data);
+  if(firstLoad&&data.config.showGuideOnStartup)showGuide();
 }
 $('nowImage').addEventListener('error',()=>{$('nowImage').dataset.failed=$('nowImage').getAttribute('src');$('nowImage').hidden=true;$('nowPlaceholder').hidden=false;});
 for(const name of ['manualForm','identityForm','settingsForm','overlayForm']) $(name).addEventListener('input',()=>{dirty.add(name);if(name==='manualForm')previewManual();if(name==='identityForm')$('identitySaved').textContent='변경한 ID를 저장해 주세요.';});
@@ -92,7 +93,7 @@ $('restartTimer').onclick=async()=>{try{render(await mutate('timer/restart',{}))
 $('savePreset').onclick=async()=>{try{render(await mutate('presets/save',{name:$('presetName').value.trim(),manual:getManual()}));notify('프리셋을 저장했어요.');}catch(e){notify(e.message);}};
 $('identityForm').addEventListener('submit',async event=>{
   event.preventDefault();$('saveApplicationId').disabled=true;$('identitySaved').textContent='저장 중…';
-  try{const result=await mutate('config',{applicationId:$('applicationId').value.trim()});dirty.delete('identityForm');render(result);$('identitySaved').textContent='이 PC에 저장했어요. 앱을 다시 켜도 자동으로 불러옵니다.';notify('Application ID를 저장했어요. Discord 연결을 확인합니다.');}
+  try{const result=await mutate('config',{applicationId:$('applicationId').value.trim(),customApplicationId:$('customApplicationId').value.trim()});dirty.delete('identityForm');render(result);$('identitySaved').textContent='이 PC에 저장했어요. 앱을 다시 켜도 자동으로 불러옵니다.';notify('Application ID를 저장했어요. Discord 연결을 확인합니다.');}
   catch(e){$('identitySaved').textContent='저장하지 못했어요. '+e.message;notify(e.message);}
   finally{$('saveApplicationId').disabled=false;}
 });
@@ -109,4 +110,4 @@ $('quit').onclick=async()=>{if(window.chrome?.webview){window.chrome.webview.pos
 const starters=[{name:'집중 모드',symbol:'⌘',title:'작업에 집중하는 중',state:'음악과 함께, 한 가지씩',timer:'countdown',minutes:25},{name:'잠깐 쉬는 시간',symbol:'☕',title:'잠시 쉬어 가는 중',state:'커피 한 잔의 여유',timer:'elapsed',minutes:10},{name:'오늘의 게임',symbol:'✦',title:'좋아하는 게임을 플레이 중',state:'나만의 플레이 타임',timer:'elapsed',minutes:60}];
 for(const s of starters)$('starterPresets').append(presetCard({name:s.name,symbol:s.symbol,manual:{title:s.title,state:s.state,type:'playing',imageUrl:'',buttonLabel:'',buttonUrl:'',timer:s.timer,minutes:s.minutes}},true));
 async function refresh(){if(stopping)return;try{render(await api('status'));}catch{$('offline').hidden=false;}}
-window.addEventListener('resize',fitOverlay);refresh();setInterval(refresh,1500);
+initMedia();initGuide();window.addEventListener('resize',fitOverlay);refresh();setInterval(refresh,1500);

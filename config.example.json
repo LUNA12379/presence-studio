@@ -1,5 +1,7 @@
 {
   "applicationId": "",
+  "customApplicationId": "",
+  "showGuideOnStartup": true,
   "enabled": true,
   "mode": "auto",
   "pauseSeconds": 60,
