@@ -1,0 +1,8 @@
+{
+  "applicationId": "",
+  "enabled": true,
+  "mode": "auto",
+  "pauseSeconds": 60,
+  "sourceMode": "auto",
+  "autostart": false
+}

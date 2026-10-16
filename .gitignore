@@ -1,0 +1,26 @@
+# Private user settings, including compatibility files from v1/v2.0
+/config.json
+/config.json.*
+/extension/connection.js
+**/edge-extension/
+**/user-data/
+*.log
+.env
+.env.*
+
+# Generated applications, restored SDK and distributable archives
+/desktop/*.exe
+/desktop/*.dll
+/desktop/*.pdb
+/dist/
+/.cache/
+/.build/
+/node_modules/
+*.zip
+
+# Editor / OS files
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vs/
+.idea/

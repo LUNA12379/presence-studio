@@ -1,0 +1,12 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube → Discord 활동",
+  "version": "1.0.0",
+  "description": "Edge의 YouTube와 YouTube Music 재생 정보를 내 PC의 Discord 활동으로 표시합니다.",
+  "permissions": ["alarms"],
+  "host_permissions": ["http://127.0.0.1:49832/*", "https://www.youtube.com/*", "https://music.youtube.com/*"],
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{ "matches": ["https://www.youtube.com/*", "https://music.youtube.com/*"], "js": ["content.js"], "run_at": "document_idle" }],
+  "action": { "default_title": "YouTube → Discord 설정" },
+  "incognito": "not_allowed"
+}

@@ -1,0 +1,10 @@
+Microsoft.Web.WebView2 SDK 1.0.3537.50
+Publisher: Microsoft
+Source: https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.3537.50
+License: WebView2-LICENSE.txt in this folder
+
+The desktop application uses the installed Microsoft Edge WebView2 Runtime.
+Node.js is used from the local installation; no npm dependencies are installed.
+
+Build: run Build.ps1 in this folder (Windows .NET Framework C# compiler).
+Source: Studio.cs and Studio.manifest.
