@@ -15,7 +15,7 @@ export { DEFAULTS, validateConfig } from './lib/settings.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-const VERSION = '2.2.0';
+const VERSION = '2.2.1';
 export function loadSettings(root = ROOT, dataDir = userDataDirectory()) { return loadUserSettings(root, dataDir); }
 function secretMatches(value, expected) {
   if (typeof value !== 'string' || typeof expected !== 'string') return false;
@@ -44,7 +44,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
   let manualStartedAt = clock(), desktopLastAt = 0, nativeInfo = {}, configRevision = 0;
   let timer, configQueue = Promise.resolve();
   const origin = `http://127.0.0.1:${port}`;
-  const images = new ImageLibrary(dataDir), assetCache = new Map();
+  const images = new ImageLibrary(dataDir), assetCache = new Map(), assetRequests = new Map();
   const imageList = () => images.list().map(item=>({...item,url:images.url(item.id,activeConfig.token,origin)}));
   rpc.on('disconnected', () => { lastAck = undefined; });
   rpc.on('ready', () => { lastAck = undefined; connectionError = ''; });
@@ -152,8 +152,18 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
         }
         if(req.method==='GET'&&pathname==='/api/discord-assets') {
           const applicationId=activeConfig.customApplicationId||activeConfig.applicationId;
+          const refresh=new URL(req.url,origin).searchParams.get('refresh')==='1';
           let cached=assetCache.get(applicationId);
-          if(!cached||clock()-cached.at>10000){const assets=await assetFetcher(applicationId);cached={at:clock(),assets};assetCache.set(applicationId,cached);}
+          if(refresh||!cached||clock()-cached.at>10000){
+            let pending=assetRequests.get(applicationId);
+            if(!pending){
+              pending=Promise.resolve().then(()=>assetFetcher(applicationId)).then(assets=>{
+                const value={at:clock(),assets};assetCache.set(applicationId,value);return value;
+              }).finally(()=>assetRequests.delete(applicationId));
+              assetRequests.set(applicationId,pending);
+            }
+            cached=await pending;
+          }
           return respond(res,200,{applicationId,assets:cached.assets});
         }
         if (req.method === 'POST' && pathname === '/api/session') {

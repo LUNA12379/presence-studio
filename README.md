@@ -7,7 +7,7 @@ Edge에서 재생하는 YouTube / YouTube Music을 Discord 활동으로 표시�
 Windows 10/11 x64, Node.js 20 이상, .NET Framework 4.7.2 이상과 Microsoft Edge WebView2 Runtime이 필요합니다. Discord 활동을 표시하려면 Discord 데스크톱 앱도 실행해야 합니다. 별도 npm 패키지는 사용하지 않습니다.
 
 1. 배포 ZIP을 폴더에 풀고 `Start.cmd`를 실행합니다. 소스만 내려받았다면 먼저 아래 빌드를 실행합니다.
-2. **연결 & 설정 → 내 Discord 애플리케이션**에서 본인의 **Application ID**를 입력하고 **ID 저장 후 연결**을 누릅니다. [Discord 개발자 페이지](https://discord.com/developers/applications)에서 애플리케이션을 생성한 뒤 General Information의 ID를 복사하면 됩니다. 봇 토큰이나 계정 비밀번호는 필요하지 않습니다.
+2. [Discord 개발자 페이지](https://discord.com/developers/applications)의 **New Application**에서 **Discord 활동에 표시하고 싶은 이름**으로 앱을 만듭니다. General Information의 Application ID를 복사해 **연결 & 설정 → 기본 Application ID**에 입력하고 **ID 저장 후 연결**을 누릅니다. 봇 토큰이나 계정 비밀번호는 필요하지 않습니다.
 3. 같은 화면의 **Edge 확장 연결 → 폴더 경로 복사**를 누릅니다. Edge의 `edge://extensions`에서 개발자 모드를 켜고 **압축 풀린 확장 로드**로 그 폴더를 선택합니다.
 4. YouTube 탭을 새로고침하고 재생합니다. Discord에서 활동 공유도 켜 주세요.
 
@@ -41,26 +41,38 @@ node --test test/*.test.mjs
 powershell -NoProfile -ExecutionPolicy Bypass -File Package.ps1
 ```
 
-결과는 `dist/Presence-Studio-2.2.0-win-x64.zip`입니다. 허용한 파일만 묶기 때문에 개인 설정, 보관한 이미지, 연결 키, OBS 키, 개발용 캐시는 들어가지 않습니다. ZIP에는 Node.js와 WebView2 Runtime 설치 파일이 포함되지 않습니다.
+결과는 `dist/Presence-Studio-2.2.1-win-x64.zip`입니다. 허용한 파일만 묶기 때문에 개인 설정, 보관한 이미지, 연결 키, OBS 키, 개발용 캐시는 들어가지 않습니다. ZIP에는 Node.js와 WebView2 Runtime 설치 파일이 포함되지 않습니다.
 
 ## 이미지 선택과 저장
 
 직접 꾸미기의 **이미지 파일 선택**으로 PNG/JPG/WebP 파일을 가져오거나 파일을 끌어 놓으세요. 15MB 이하 원본을 최대 1024px PNG로 변환해 `%APPDATA%\PresenceStudio\images`에 보관합니다. 최대 60개까지 저장하며 원본을 이동해도 유지됩니다. 활동 또는 프리셋을 저장하면 선택한 이미지도 함께 기억합니다.
 
-로컬 파일은 앱·데스크톱 오버레이·OBS에 표시됩니다. Discord에는 **등록한 Art Asset 또는 공개 이미지 URL**이 필요합니다. 같은 사진을 Discord에도 보여주려면:
+두 이미지 선택란은 표시 위치가 다릅니다. 다른 사진을 골라도 되며, 저장 시 두 선택을 함께 기억합니다.
+
+| 선택란 | 표시되는 위치 |
+| --- | --- |
+| 내 이미지 / 보관한 이미지 | 앱 미리보기, 데스크톱 오버레이, OBS |
+| Discord에 표시할 이미지 | Discord 프로필의 활동 카드에 나오는 큰 사진 |
+
+내 이미지를 고르지 않으면 Discord 이미지나 고급 이미지 주소를 앱·오버레이에도 사용합니다. Discord에는 **등록한 Art Asset 또는 공개 이미지 URL**이 필요합니다. 같은 사진을 Discord에도 보여주려면:
 
 1. 직접 꾸미기에서 **Discord 이미지 등록**을 엽니다.
-2. 해당 애플리케이션의 Rich Presence → Art Assets에 사진을 등록합니다. **보관 폴더 열기**에서 앱이 보관한 PNG 파일을 찾을 수도 있습니다.
+2. 해당 애플리케이션의 Rich Presence → Art Assets에 사진을 등록하고 저장합니다. **조회 대상**에 표시된 앱과 등록한 앱이 같아야 합니다. 커스텀 전용 ID가 있으면 그 앱에 등록하세요. **보관 폴더 열기**에서 앱이 보관한 PNG 파일을 찾을 수도 있습니다.
 3. 앱의 **목록 새로고침**을 누른 뒤 **Discord에 표시할 이미지** 목록에서 선택합니다.
 4. 활동 또는 프리셋을 저장합니다. 주소를 직접 입력할 필요는 없습니다.
 
-이미지는 자동으로 외부에 업로드되지 않습니다. 직접 URL을 쓰려는 경우에는 **링크와 이미지 주소 (고급)**에서 입력할 수 있습니다.
+**목록 새로고침**은 이전에 비어 있던 목록을 다시 사용하는 대신 Discord에 최신 목록을 요청합니다. 여전히 비어 있다면 조회 대상 ID와 개발자 페이지의 저장 여부를 확인하세요. 이미지는 자동으로 외부에 업로드되지 않습니다. 직접 URL을 쓰려는 경우에는 **링크와 이미지 주소 (고급)**에서 입력할 수 있습니다.
 
-## 커스텀 이름·작은 아이콘
+## 앱을 두 개 만드는 이유와 이름 주의사항
 
-Discord 카드의 앱 이름과 상단 작은 아이콘은 연결한 Discord 애플리케이션의 정보를 따릅니다. YouTube 자동 감지와 다른 이름·아이콘을 쓰려면 새 Discord 애플리케이션을 만들고 이름과 App Icon을 지정한 뒤 **연결 & 설정 → 커스텀 활동 전용 Application ID**에 저장하세요.
+Discord 카드의 앱 이름은 연결한 Discord 애플리케이션 이름을 따릅니다. 자동 감지와 직접 꾸민 활동을 다른 이름으로 표시하려면 앱을 두 개 만드세요.
 
-자동 감지는 기본 ID를, 직접 꾸민 활동은 커스텀 ID를 사용하며 전환할 때 Discord 연결도 자동으로 바뀝니다. 커스텀 ID가 비어 있으면 기본 ID를 함께 사용합니다. 이미지를 추가할 때도 커스텀 ID가 있으면 해당 앱의 Art Assets 목록을 불러옵니다.
+1. **자동 감지용 앱**: 예를 들어 `YouTube`라는 이름으로 만들고 **기본 Application ID**에 저장합니다.
+2. **커스텀 활동용 앱**: `Presence Studio` 등 원하는 이름으로 하나 더 만들고 **커스텀 활동 전용 Application ID**에 저장합니다.
+
+**주의: 앱 이름을 `YouTube`로 정하고 같은 ID를 커스텀 활동에도 쓰면, 게임·작업 문구를 입력해도 앱 이름은 YouTube로 남고 Discord가 작은 유튜브 로고를 붙여 유튜브 활동처럼 보일 수 있습니다.** 실제 감지 범위가 이름 때문에 바뀌는 것은 아닙니다. 이 로고는 Discord가 이름에 따라 붙이는 플랫폼 표시이며, General Information의 App Icon이나 Art Assets에서 고른 큰 사진과 별개입니다.
+
+자동 감지는 기본 ID를, 직접 꾸민 활동은 커스텀 ID를 사용하며 전환할 때 Discord 연결도 자동으로 바뀝니다. 같은 앱 이름을 사용해도 된다면 전용 ID를 비워 두고 앱 하나만 사용해도 됩니다. 이미지를 추가할 때도 커스텀 ID가 있으면 해당 앱의 Art Assets 목록을 불러옵니다. 두 ID는 저장 후 앱과 PC를 다시 켜도 유지됩니다.
 
 ## 시작 설명서
 

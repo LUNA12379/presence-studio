@@ -32,6 +32,47 @@ test('Discord asset lists contain only validated public image identifiers',async
   assert.equal(assets.length,1);assert.equal(assets[0].applicationId,CUSTOM);assert.match(requested,/^https:\/\/discord\.com\/api\/v10\/oauth2\/applications\//);
   await assert.rejects(fetchDiscordAssets('../bad'));await assert.rejects(fetchDiscordAssets(CUSTOM,async()=>({ok:false,status:429})),/잠시/);
 });
+
+test('new Discord asset fetches bypass a cached empty CDN response without credentials',async()=>{
+  const seen=new Set();
+  const fetcher=async(url,options)=>{
+    const parsed=new URL(url),fresh=parsed.searchParams.get('refresh');
+    assert.equal(parsed.pathname,`/api/v10/oauth2/applications/${CUSTOM}/assets`);
+    assert.equal(options.headers['Cache-Control'],'no-cache');
+    assert.equal(options.headers.Authorization,undefined);
+    const stale=!fresh||seen.has(fresh);seen.add(fresh);
+    return{ok:true,json:async()=>stale?[]:[{id:ASSET,name:'uploaded-after-empty-list'}]};
+  };
+  assert.equal((await fetchDiscordAssets(CUSTOM,fetcher)).length,1);
+  assert.equal((await fetchDiscordAssets(CUSTOM,fetcher)).length,1);
+});
+
+test('refresh replaces an empty local cache immediately and isolates application lists',async t=>{
+  const root=fixture(t),dataDir=path.join(root,'data'),port=49845,config=loadSettings(root,dataDir);config.applicationId=MAIN;
+  class FakeRPC extends EventEmitter{ready=false;async connect(){this.ready=true;}async setActivity(){}close(){this.ready=false;}}
+  const calls=[];let uploaded=false,fail=false;
+  const bridge=createBridge({root,dataDir,config,port,rpc:new FakeRPC(),assetFetcher:async app=>{
+    calls.push(app);if(fail)throw new Error('잠시 뒤 이미지 목록을 다시 불러와 주세요.');
+    return uploaded?[{id:ASSET,name:'new-image',applicationId:app}]:[];
+  }});
+  const headers={'X-Bridge-Token':config.token,'Content-Type':'application/json'},base=`http://127.0.0.1:${port}/api/`;
+  const list=async(force=false)=>{const r=await fetch(base+'discord-assets'+(force?'?refresh=1':''),{headers});assert.equal(r.status,200);return r.json();};
+  try{
+    await bridge.start();
+    assert.equal((await fetch(base+'discord-assets?refresh=1')).status,401);
+    assert.deepEqual((await list()).assets,[]);uploaded=true;
+    assert.deepEqual((await list()).assets,[]);assert.equal(calls.length,1);
+    assert.equal((await list(true)).assets[0].name,'new-image');assert.equal(calls.length,2);
+    assert.equal((await list()).assets.length,1);assert.equal(calls.length,2);
+    fail=true;
+    const error=await fetch(base+'discord-assets?refresh=1',{headers});assert.equal(error.status,400);assert.match((await error.json()).error,/잠시/);
+    assert.equal((await list()).assets.length,1);fail=false;
+    assert.equal((await list(true)).assets.length,1);assert.equal(calls.length,4);
+    const update=await fetch(base+'config',{method:'POST',headers,body:JSON.stringify({customApplicationId:CUSTOM})});assert.equal(update.status,200);
+    assert.equal((await list()).applicationId,CUSTOM);assert.equal(calls.at(-1),CUSTOM);
+    assert.equal(calls.length,5);
+  }finally{await bridge.shutdown();}
+});
 test('image API, presets, guide preferences and application switching work together and persist',async t=>{
   const root=fixture(t),dataDir=path.join(root,'data'),port=49844,config=loadSettings(root,dataDir);config.applicationId=MAIN;
   class FakeRPC extends EventEmitter{ready=false;connected=[];sent=[];async connect(id){this.connected.push(id);this.ready=true;}async setActivity(value){this.sent.push(value);}close(){this.ready=false;}}

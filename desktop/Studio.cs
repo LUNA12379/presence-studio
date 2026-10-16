@@ -78,7 +78,7 @@ sealed class StudioForm : Form {
         timer.Tick += async delegate { if (Program.ShowEvent != null && Program.ShowEvent.WaitOne(0)) ShowStudio(); await Poll(); };
     }
     async Task EnsureServer() {
-        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.2.0")) return;
+        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.2.1")) return;
             // Upgrade only this application's v1 bridge, preserving its pairing key.
             if (health.Contains("youtube-discord-local")) {
                 var old = Data.Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Program.SettingsFile));
@@ -91,7 +91,7 @@ sealed class StudioForm : Form {
         } catch (HttpRequestException) {} catch (TaskCanceledException) {}
         var info = new ProcessStartInfo("node.exe", "\"" + Path.Combine(Program.Root, "server.mjs") + "\"") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, WorkingDirectory = Program.Root };
         Process.Start(info);
-        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.2.0")) return; } catch {} }
+        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.2.1")) return; } catch {} }
         throw new Exception("연결 프로그램을 시작하지 못했습니다. Node.js가 설치되어 있는지 확인하세요.");
     }
     async Task Initialize() {
@@ -181,6 +181,13 @@ sealed class StudioForm : Form {
             File.WriteAllText(Path.Combine(verifyPath, "workflow.json"), await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioVerification)"));
             await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#imageDrop').scrollIntoView({block:'center'})"); await Task.Delay(200);
             using (var stream = File.Create(Path.Combine(verifyPath, "custom-images.png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+            await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#discordImageHelp').scrollIntoView({block:'center'})"); await Task.Delay(200);
+            using (var stream = File.Create(Path.Combine(verifyPath, "discord-images.png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+            for (int step = 1; step <= 2; step++) {
+                await view.CoreWebView2.ExecuteScriptAsync("showGuide(" + step + ");document.querySelector('#guideDialog').scrollTop=0"); await Task.Delay(200);
+                using (var stream = File.Create(Path.Combine(verifyPath, "guide-step-" + (step + 1) + ".png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+                await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#guideDialog').close()");
+            }
             var imageState = await Api("status");
             var imageStyle = Data.Obj(Data.Get(Data.Obj(Data.Get(imageState, "config")), "overlay")); imageStyle["enabled"] = true;
             overlay.UpdateState(Data.Obj(Data.Get(imageState, "display")), imageStyle, true); await Task.Delay(900);

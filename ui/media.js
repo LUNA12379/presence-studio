@@ -12,18 +12,20 @@ function syncMedia(data){
   if(signature!==imageSignature){imageSignature=signature;imageCatalog=data.images||[];const selected=$('localImage').value;$('localImage').replaceChildren(imageOption('','이미지 없음'),...imageCatalog.map(item=>imageOption(item.id,item.name)));$('localImage').value=selected;}
   const applicationId=data.config.customApplicationId||data.config.applicationId;
   $('registerDiscordImage').href=applicationId?`https://discord.com/developers/applications/${applicationId}/rich-presence/assets`:'https://discord.com/developers/applications';
-  $('manualIdentityNote').textContent=data.config.customApplicationId?'커스텀 전용 애플리케이션의 이름과 아이콘으로 표시됩니다.':'현재 기본 애플리케이션의 이름·작은 아이콘을 사용해요. 설정에서 커스텀 전용 ID를 저장하면 따로 표시할 수 있어요.';
+  $('manualIdentityNote').textContent=data.config.customApplicationId?'직접 꾸민 활동은 커스텀 전용 애플리케이션의 이름으로 표시해요. 자동 감지는 기본 애플리케이션을 사용합니다.':'현재 커스텀 활동도 기본 애플리케이션의 이름으로 표시해요. 설정에 커스텀 전용 ID를 저장하면 자동 감지와 다른 이름을 쓸 수 있어요.';
+  $('discordImageTarget').textContent=applicationId?`조회 대상: ${data.config.customApplicationId?'커스텀 전용':'기본'} 애플리케이션 · ${applicationId}`:'먼저 연결 & 설정에서 Application ID를 저장하세요.';
   if(assetsApplicationId&&assetsApplicationId!==applicationId){assetsApplicationId='';discordAssets=[];$('discordImage').replaceChildren(imageOption('','기본 앱 이미지'));$('discordImageStatus').textContent='ID가 바뀌었어요. 목록을 새로 불러오세요.';}
 }
-async function loadDiscordImages(){
+async function loadDiscordImages(force=false){
+  if($('refreshDiscordImages').disabled)return;
   $('refreshDiscordImages').disabled=true;$('discordImageStatus').textContent='등록한 이미지를 불러오는 중…';
   try{
-    const result=await api('discord-assets');
-    if(result.applicationId!==(latest.config.customApplicationId||latest.config.applicationId))return;
+    const result=await api(force?'discord-assets?refresh=1':'discord-assets');
+    if(result.applicationId!==(latest.config.customApplicationId||latest.config.applicationId)){$('discordImageStatus').textContent='ID가 바뀌었어요. 목록을 다시 새로고침하세요.';return;}
     const selected=mediaFields();assetsApplicationId=result.applicationId;discordAssets=result.assets;
     $('discordImage').replaceChildren(imageOption('','기본 앱 이미지'),...discordAssets.map(item=>imageOption(item.id,item.name,item.applicationId)));
     setMedia({...selected});
-    $('discordImageStatus').textContent=result.assets.length?`${result.assets.length}개 이미지 · 선택한 뒤 활동이나 프리셋을 저장하세요.`:'아직 등록된 이미지가 없어요. 아래 등록 페이지에서 파일을 올린 뒤 목록을 새로 불러오세요.';
+    $('discordImageStatus').textContent=result.assets.length?`${result.assets.length}개 이미지 · 선택한 뒤 활동이나 프리셋을 저장하세요.`:'이 애플리케이션에서 이미지를 찾지 못했어요. 위 조회 대상과 등록한 앱이 같은지 확인하고, 개발자 페이지에서 저장을 마친 뒤 목록을 새로고침하세요.';
   }catch(e){$('discordImageStatus').textContent=e.message;}
   finally{$('refreshDiscordImages').disabled=false;}
 }
@@ -51,6 +53,6 @@ function initMedia(){
   $('imageDrop').addEventListener('dragleave',()=>$('imageDrop').classList.remove('dragging'));
   $('imageDrop').addEventListener('drop',event=>{event.preventDefault();$('imageDrop').classList.remove('dragging');importImage(event.dataTransfer.files[0]);});
   for(const id of ['localImage','discordImage'])$(id).onchange=()=>{dirty.add('manualForm');$('manualImage').value='';previewManual();};
-  $('refreshDiscordImages').onclick=loadDiscordImages;
+  $('refreshDiscordImages').onclick=()=>loadDiscordImages(true);
   $('openImageFolder').onclick=async()=>{try{await mutate('images/open-folder',{});}catch(e){notify(e.message);}};
 }

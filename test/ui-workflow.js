@@ -12,14 +12,22 @@
     await wait(()=>!$('guideDialog').open);assert(latest.config.showGuideOnStartup===false,'Guide preference was not saved');
     panel('settings');$('openGuide').click();assert($('guideDialog').open,'Settings cannot reopen the guide');$('guideClose').click();
     panel('custom');
+    await wait(()=>!$('refreshDiscordImages').disabled);
+    assert($('discordImage').options.length===1,'Fixture should start with a cached empty list');
     const canvas=document.createElement('canvas');canvas.width=256;canvas.height=256;const context=canvas.getContext('2d');const gradient=context.createLinearGradient(0,0,256,256);gradient.addColorStop(0,'#8b9dff');gradient.addColorStop(1,'#152d4c');context.fillStyle=gradient;context.fillRect(0,0,256,256);context.fillStyle='#e5eaff';context.font='bold 160px sans-serif';context.textAlign='center';context.fillText('P',128,185);
     const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));await importImage(new File([blob],'내 활동.png',{type:'image/png'}));
     const imageId=$('localImage').value;assert(imageId.length===64,'File image was not selected');
     await wait(()=>$('manualPreviewImage').complete&&$('manualPreviewImage').naturalWidth>0);
+    $('refreshDiscordImages').click();await wait(()=>!$('refreshDiscordImages').disabled);
+    assert($('discordImage').options.length===2,'Refresh did not replace the cached empty list');
+    const discordId=$('discordImage').options[1].value;
+    $('discordImage').value=discordId;$('discordImage').dispatchEvent(new Event('change',{bubbles:true}));
+    assert($('localImage').value===imageId,'Choosing a Discord image changed the local image');
+    assert($('manualPreviewImage').getAttribute('src')===imageCatalog.find(item=>item.id===imageId).url,'Local preview must retain its own image');
     $('manualTitle').value='이미지와 함께 집중';$('manualTitle').dispatchEvent(new Event('input',{bubbles:true}));$('manualForm').requestSubmit();
-    await wait(()=>latest.config.manual.imageId===imageId);
-    $('presetName').value='내 이미지 프리셋';$('savePreset').click();await wait(()=>latest.config.presets.some(item=>item.manual.imageId===imageId));
-    const selected=$('localImage').value;await loadDiscordImages();assert($('localImage').value===selected,'Refreshing Discord images changed the local image');
-    window.studioVerification={done:true,imageSaved:true,presetImageSaved:true,guidePreferenceSaved:true,guideReopened:true,imageId};
+    await wait(()=>latest.config.manual.imageId===imageId&&latest.config.manual.discordAssetId===discordId);
+    $('presetName').value='내 이미지 프리셋';$('savePreset').click();await wait(()=>latest.config.presets.some(item=>item.manual.imageId===imageId&&item.manual.discordAssetId===discordId));
+    await loadDiscordImages(true);assert($('localImage').value===imageId&&$('discordImage').value===discordId,'Refreshing Discord images changed a saved selection');
+    window.studioVerification={done:true,imageSaved:true,presetImageSaved:true,guidePreferenceSaved:true,guideReopened:true,emptyListRefreshFixed:true,separateImageSelectionsSaved:true,imageId};
   }catch(error){window.studioVerification={done:true,error:error.stack||error.message};}
 })();
