@@ -65,6 +65,7 @@ sealed class StudioForm : Form {
     readonly bool background; readonly string verifyPath;
     NotifyIcon tray; OverlayForm overlay; bool busy, exiting, hotkey, overlayHotkey; string token; int failedPolls;
     Dictionary<string, object> state = new Dictionary<string, object>();
+    CoreWebView2DownloadOperation verificationDownload;
     public StudioForm(bool background, string verifyPath) {
         this.background = background; this.verifyPath = verifyPath;
         Text = "Presence Studio"; Width = 1180; Height = 850; MinimumSize = new Size(900, 680);
@@ -78,7 +79,7 @@ sealed class StudioForm : Form {
         timer.Tick += async delegate { if (Program.ShowEvent != null && Program.ShowEvent.WaitOne(0)) ShowStudio(); await Poll(); };
     }
     async Task EnsureServer() {
-        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.2.1")) return;
+        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.3.0")) return;
             // Upgrade only this application's v1 bridge, preserving its pairing key.
             if (health.Contains("youtube-discord-local")) {
                 var old = Data.Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Program.SettingsFile));
@@ -91,7 +92,7 @@ sealed class StudioForm : Form {
         } catch (HttpRequestException) {} catch (TaskCanceledException) {}
         var info = new ProcessStartInfo("node.exe", "\"" + Path.Combine(Program.Root, "server.mjs") + "\"") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, WorkingDirectory = Program.Root };
         Process.Start(info);
-        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.2.1")) return; } catch {} }
+        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.3.0")) return; } catch {} }
         throw new Exception("연결 프로그램을 시작하지 못했습니다. Node.js가 설치되어 있는지 확인하세요.");
     }
     async Task Initialize() {
@@ -105,6 +106,7 @@ sealed class StudioForm : Form {
             view.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             view.CoreWebView2.Settings.IsStatusBarEnabled = false;
             view.CoreWebView2.Settings.AreDevToolsEnabled = false;
+            view.CoreWebView2.DownloadStarting += SaveImageDownload;
             view.CoreWebView2.NewWindowRequested += delegate(object sender, CoreWebView2NewWindowRequestedEventArgs e) { e.Handled = true; OpenExternal(e.Uri); };
             view.CoreWebView2.NavigationStarting += delegate(object sender, CoreWebView2NavigationStartingEventArgs e) {
                 Uri uri; if (!Uri.TryCreate(e.Uri, UriKind.Absolute, out uri) || uri.Scheme != "http" || uri.Host != "127.0.0.1" || uri.Port != 49832) { e.Cancel = true; OpenExternal(e.Uri); }
@@ -163,6 +165,24 @@ sealed class StudioForm : Form {
     }
     async Task Change(object patch) { try { await Api("config", patch); await Poll(); } catch (Exception error) { if (tray != null) tray.ShowBalloonTip(3000, "Presence Studio", error.Message, ToolTipIcon.Warning); } }
     async Task TogglePresence() { await Change(new { enabled = !Data.Bool(Data.Obj(Data.Get(state, "config")), "enabled", true) }); }
+    void SaveImageDownload(object sender, CoreWebView2DownloadStartingEventArgs e) {
+        Uri uri;
+        if (!Uri.TryCreate(e.DownloadOperation.Uri, UriKind.Absolute, out uri) || uri.Scheme != "http" || uri.Host != "127.0.0.1" || uri.Port != 49832 || !System.Text.RegularExpressions.Regex.IsMatch(uri.AbsolutePath, "^/media/[a-f0-9]{64}$")) { e.Cancel = true; return; }
+        e.Handled = true;
+        var deferral = e.GetDeferral();
+        // Show the native save dialog after the WebView2 event returns to avoid re-entrancy.
+        BeginInvoke(new Action(delegate {
+            try {
+                if (verifyPath != null && Environment.GetEnvironmentVariable("PRESENCE_STUDIO_VERIFY_MUTATIONS") == "1" && !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PRESENCE_STUDIO_DATA_DIR"))) {
+                    e.ResultFilePath = Path.Combine(verifyPath, "exported-image.png"); verificationDownload = e.DownloadOperation;
+                } else {
+                    using (var dialog = new SaveFileDialog { Title = "Discord에 올릴 PNG 저장", Filter = "PNG 이미지 (*.png)|*.png", FileName = Path.GetFileName(e.ResultFilePath), DefaultExt = "png", AddExtension = true, OverwritePrompt = true }) {
+                        if (dialog.ShowDialog(this) == DialogResult.OK) e.ResultFilePath = dialog.FileName; else e.Cancel = true;
+                    }
+                }
+            } finally { deferral.Complete(); }
+        }));
+    }
     async Task ToggleOverlay() { var style = Data.Obj(Data.Get(Data.Obj(Data.Get(state, "config")), "overlay")); await Change(new { overlay = new { enabled = !Data.Bool(style, "enabled") } }); }
     async Task Quit() { if (exiting) return; exiting = true; timer.Stop(); try { await Api("stop", new {}); } catch {} Close(); }
     async Task Verify() {
@@ -173,12 +193,26 @@ sealed class StudioForm : Form {
         }
         bool localImageVerified = false;
         if (Environment.GetEnvironmentVariable("PRESENCE_STUDIO_VERIFY_MUTATIONS") == "1" && !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PRESENCE_STUDIO_DATA_DIR"))) {
+            await view.CoreWebView2.ExecuteScriptAsync("window.studioCaptureCrop=true");
             await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(Path.Combine(Program.Root, "test", "ui-workflow.js")));
             bool finished = false;
-            for (int i = 0; i < 100; i++) { await Task.Delay(150); if (await view.CoreWebView2.ExecuteScriptAsync("window.studioVerification && window.studioVerification.done === true") == "true") { finished = true; break; } }
+            for (int i = 0; i < 100; i++) {
+                await Task.Delay(150);
+                if (await view.CoreWebView2.ExecuteScriptAsync("window.studioCropReady && !window.studioCropCaptured") == "true") {
+                    using (var stream = File.Create(Path.Combine(verifyPath, "crop-editor.png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
+                    await view.CoreWebView2.ExecuteScriptAsync("window.studioCropCaptured=true");
+                }
+                if (await view.CoreWebView2.ExecuteScriptAsync("window.studioVerification && window.studioVerification.done === true") == "true") { finished = true; break; }
+            }
             if (!finished) throw new Exception("Image / guide UI workflow timed out");
             if (await view.CoreWebView2.ExecuteScriptAsync("!!window.studioVerification.error") == "true") throw new Exception(await view.CoreWebView2.ExecuteScriptAsync("window.studioVerification.error"));
             File.WriteAllText(Path.Combine(verifyPath, "workflow.json"), await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioVerification)"));
+            await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#exportImage').click()");
+            for (int i = 0; i < 50; i++) { await Task.Delay(100); if (verificationDownload != null && verificationDownload.State == CoreWebView2DownloadState.Completed) break; }
+            if (verificationDownload == null || verificationDownload.State != CoreWebView2DownloadState.Completed) throw new Exception("PNG export did not complete");
+            using (var exported = new Bitmap(Path.Combine(verifyPath, "exported-image.png"))) {
+                if (exported.Width != 1024 || exported.Height != 1024) throw new Exception("Exported image is not 1024 square");
+            }
             await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#imageDrop').scrollIntoView({block:'center'})"); await Task.Delay(200);
             using (var stream = File.Create(Path.Combine(verifyPath, "custom-images.png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
             await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#discordImageHelp').scrollIntoView({block:'center'})"); await Task.Delay(200);

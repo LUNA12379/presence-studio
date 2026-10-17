@@ -84,6 +84,10 @@ test('image API, presets, guide preferences and application switching work toget
     assert.equal((await fetch(base+'/api/images',{method:'POST',headers:{'Content-Type':'image/png'},body:PNG})).status,401);
     const uploaded=await fetch(base+'/api/images',{method:'POST',headers:{'X-Bridge-Token':config.token,'Content-Type':'image/png','X-Image-Name':encodeURIComponent('내 사진.png')},body:PNG});assert.equal(uploaded.status,200);const {image}=await uploaded.json();
     assert.equal((await fetch(base+'/media/'+image.id)).status,404);const photo=await fetch(image.url);assert.equal(photo.headers.get('content-type'),'image/png');assert.deepEqual(Buffer.from(await photo.arrayBuffer()),PNG);
+    assert.equal((await fetch(base+'/media/'+image.id+'?download=1')).status,404);
+    const exported=await fetch(image.url+'&download=1');assert.equal(exported.status,200);
+    assert.match(exported.headers.get('content-disposition'),/^attachment; filename="presence-[a-f0-9]{12}\.png"$/);
+    assert.deepEqual(Buffer.from(await exported.arrayBuffer()),PNG);
     const manual={...config.manual,imageId:image.id,discordAssetId:ASSET,discordAssetAppId:CUSTOM};
     let result=await request('config',{customApplicationId:CUSTOM,sourceMode:'manual',manual,showGuideOnStartup:false});
     assert.equal(rpc.connected.at(-1),CUSTOM);assert.equal(result.effectiveApplicationId,CUSTOM);assert.equal(result.display.image,image.url);

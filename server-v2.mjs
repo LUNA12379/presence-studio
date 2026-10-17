@@ -15,7 +15,7 @@ export { DEFAULTS, validateConfig } from './lib/settings.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-const VERSION = '2.2.1';
+const VERSION = '2.3.0';
 export function loadSettings(root = ROOT, dataDir = userDataDirectory()) { return loadUserSettings(root, dataDir); }
 function secretMatches(value, expected) {
   if (typeof value !== 'string' || typeof expected !== 'string') return false;
@@ -132,6 +132,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
     if(pathname.startsWith('/media/')&&req.method==='GET') {
       const id=pathname.slice(7),key=new URL(req.url,origin).searchParams.get('key');
       if(!images.exists(id)||!secretMatches(key,images.signature(id,activeConfig.token)))return respond(res,404,{error:'Image not found'});
+      if(new URL(req.url,origin).searchParams.get('download')==='1')res.setHeader('Content-Disposition',`attachment; filename="presence-${id.slice(0,12)}.png"`);
       return respond(res,200,fs.readFileSync(images.filename(id)),'image/png');
     }
     if (pathname === '/api/overlay' && req.method === 'GET') {
@@ -214,7 +215,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       const html = fs.readFileSync(path.join(root, 'ui', 'index.html'), 'utf8').replace('__BRIDGE_TOKEN__', activeConfig.token);
       return respond(res, 200, html, 'text/html; charset=utf-8');
     }
-    const assets = { '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
+    const assets = { '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/crop.js':['crop.js','text/javascript'], '/crop-math.js':['crop-math.js','text/javascript'], '/crop.css':['crop.css','text/css'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
       '/overlay.js': ['overlay.js', 'text/javascript'], '/overlay.css': ['overlay.css', 'text/css'], '/icon.svg': ['icon.svg', 'image/svg+xml'] };
     if (assets[pathname]) {
       const [file, type] = assets[pathname]; return respond(res, 200, fs.readFileSync(path.join(root, 'ui', file)), `${type}; charset=utf-8`);
