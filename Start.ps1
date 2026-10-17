@@ -16,8 +16,9 @@ try {
         exit 0
     }
     if (-not (Test-Bridge)) {
-        $nodePath = (Get-Command node.exe -ErrorAction SilentlyContinue).Source
-        if (-not $nodePath) { throw 'Node.js 20 or later is required. Install it from https://nodejs.org/ and run Start.cmd again.' }
+        $nodePath = Join-Path $appDirectory 'runtime\node.exe'
+        if (!(Test-Path -LiteralPath $nodePath)) { $nodePath = (Get-Command node.exe -ErrorAction SilentlyContinue).Source }
+        if (-not $nodePath) { throw 'Node.js 20.3 or later is required. Install it from https://nodejs.org/ and run Start.cmd again, or use the Presence Studio installer.' }
         $entryPath = Join-Path $appDirectory 'server.mjs'
         Start-Process -FilePath $nodePath -ArgumentList ('"' + $entryPath + '"') -WorkingDirectory $appDirectory -WindowStyle Hidden
         $ready = $false

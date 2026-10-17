@@ -79,7 +79,7 @@ sealed class StudioForm : Form {
         timer.Tick += async delegate { if (Program.ShowEvent != null && Program.ShowEvent.WaitOne(0)) ShowStudio(); await Poll(); };
     }
     async Task EnsureServer() {
-        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.4.0")) return;
+        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.5.0")) return;
             // Upgrade only this application's v1 bridge, preserving its pairing key.
             if (health.Contains("youtube-discord-local")) {
                 var old = Data.Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Program.SettingsFile));
@@ -90,9 +90,10 @@ sealed class StudioForm : Form {
                 await Task.Delay(600);
             }
         } catch (HttpRequestException) {} catch (TaskCanceledException) {}
-        var info = new ProcessStartInfo("node.exe", "\"" + Path.Combine(Program.Root, "server.mjs") + "\"") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, WorkingDirectory = Program.Root };
+        string bundledNode = Path.Combine(Program.Root, "runtime", "node.exe");
+        var info = new ProcessStartInfo(File.Exists(bundledNode) ? bundledNode : "node.exe", "\"" + Path.Combine(Program.Root, "server.mjs") + "\"") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, WorkingDirectory = Program.Root };
         Process.Start(info);
-        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.4.0")) return; } catch {} }
+        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.5.0")) return; } catch {} }
         throw new Exception("연결 프로그램을 시작하지 못했습니다. Node.js가 설치되어 있는지 확인하세요.");
     }
     async Task Initialize() {
@@ -219,7 +220,7 @@ sealed class StudioForm : Form {
             using (var stream = File.Create(Path.Combine(verifyPath, "discord-images.png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
             await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#presetControls').scrollIntoView({block:'center'})"); await Task.Delay(200);
             using (var stream = File.Create(Path.Combine(verifyPath, "preset-editor.png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
-            for (int step = 1; step <= 3; step++) {
+            for (int step = 1; step <= 4; step++) {
                 await view.CoreWebView2.ExecuteScriptAsync("showGuide(" + step + ");document.querySelector('#guideDialog').scrollTop=0"); await Task.Delay(200);
                 using (var stream = File.Create(Path.Combine(verifyPath, "guide-step-" + (step + 1) + ".png"))) await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, stream);
                 await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#guideDialog').close()");
@@ -229,6 +230,12 @@ sealed class StudioForm : Form {
             overlay.UpdateState(Data.Obj(Data.Get(imageState, "display")), imageStyle, true); await Task.Delay(900);
             localImageVerified = overlay.HasImage; if (!localImageVerified) throw new Exception("Native overlay did not load the saved image");
             using (var bitmap = new Bitmap(overlay.Width, overlay.Height)) { overlay.DrawToBitmap(bitmap, new Rectangle(Point.Empty, overlay.Size)); bitmap.Save(Path.Combine(verifyPath, "local-image-overlay.png"), ImageFormat.Png); }
+            await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(Path.Combine(Program.Root, "test", "ui-updates-workflow.js")));
+            bool updateFinished=false;
+            for(int i=0;i<100;i++){await Task.Delay(150);if(await view.CoreWebView2.ExecuteScriptAsync("window.studioUpdateVerification && window.studioUpdateVerification.done") == "true"){updateFinished=true;break;}}
+            if(!updateFinished || await view.CoreWebView2.ExecuteScriptAsync("!!window.studioUpdateVerification.error") == "true")throw new Exception(await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioUpdateVerification)"));
+            File.WriteAllText(Path.Combine(verifyPath,"updates.json"),await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioUpdateVerification)"));
+            using(var stream=File.Create(Path.Combine(verifyPath,"updates.png")))await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
         }
         await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#guideDialog').close();document.querySelector('[data-panel=home]').click()");
         string result = await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify({title:document.title,ready:!!document.querySelector('#sourceMode'),text:document.body.innerText.slice(0,3500)})");

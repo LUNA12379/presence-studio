@@ -124,8 +124,9 @@ function render(data) {
   $('connectionError').textContent=data.error||'';$('extensionPath').textContent=data.extensionPath;$('obsUrl').value=data.overlayUrl;
   const previewUrl=data.overlayUrl.replace('/overlay#','/overlay?preview=1#');if($('overlayPreview').getAttribute('src')!==previewUrl)$('overlayPreview').src=previewUrl;fitOverlay();
   $('hotkeyStatus').textContent=!data.desktopConnected?'단축키는 데스크톱 앱 실행 중에 사용할 수 있어요.':(!data.nativeInfo.hotkeyRegistered||!data.nativeInfo.overlayHotkeyRegistered)?'다른 앱이 일부 단축키를 사용 중이에요. 트레이 메뉴를 이용해 주세요.':'두 단축키가 모두 등록되어 있어요.';
-  renderSessions(data);renderPresets(data);
+  renderSessions(data);renderPresets(data);renderUpdates(data.update);
   if(firstLoad&&data.config.showGuideOnStartup)showGuide();
+  if(firstLoad)checkUpdatesAtStartup(data);
 }
 $('nowImage').addEventListener('error',()=>{$('nowImage').dataset.failed=$('nowImage').getAttribute('src');$('nowImage').hidden=true;$('nowPlaceholder').hidden=false;});
 for(const name of ['manualForm','identityForm','settingsForm','overlayForm']) $(name).addEventListener('input',()=>{dirty.add(name);if(name==='manualForm')previewManual();if(name==='identityForm')$('identitySaved').textContent='변경한 ID를 저장해 주세요.';});
@@ -157,4 +158,4 @@ $('quit').onclick=async()=>{if(window.chrome?.webview){window.chrome.webview.pos
 const starters=[{name:'집중 모드',symbol:'⌘',title:'작업에 집중하는 중',state:'음악과 함께, 한 가지씩',timer:'countdown',minutes:25},{name:'잠깐 쉬는 시간',symbol:'☕',title:'잠시 쉬어 가는 중',state:'커피 한 잔의 여유',timer:'elapsed',minutes:10},{name:'오늘의 게임',symbol:'✦',title:'좋아하는 게임을 플레이 중',state:'나만의 플레이 타임',timer:'elapsed',minutes:60}];
 for(const s of starters)$('starterPresets').append(presetCard({name:s.name,symbol:s.symbol,manual:{title:s.title,state:s.state,type:'playing',imageUrl:'',buttonLabel:'',buttonUrl:'',timer:s.timer,minutes:s.minutes}},true));
 async function refresh(){if(stopping)return;try{render(await api('status'));}catch{$('offline').hidden=false;}}
-initMedia();initGuide();window.addEventListener('resize',fitOverlay);refresh();setInterval(refresh,1500);
+initMedia();initGuide();initUpdates();window.addEventListener('resize',fitOverlay);refresh();setInterval(refresh,1500);

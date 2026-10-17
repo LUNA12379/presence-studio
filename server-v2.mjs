@@ -11,11 +11,12 @@ import { DEFAULTS, validateConfig, validatePreset } from './lib/settings.mjs';
 import { resolveActivity } from './lib/activity.mjs';
 import { userDataDirectory, loadUserSettings, saveSettings } from './lib/storage.mjs';
 import { ImageLibrary, MAX_IMAGE_BYTES, effectiveApplicationId, fetchDiscordAssets } from './lib/images.mjs';
+import { UpdateManager } from './lib/updates.mjs';
 export { DEFAULTS, validateConfig } from './lib/settings.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-const VERSION = '2.4.0';
+const VERSION = '2.5.0';
 export function loadSettings(root = ROOT, dataDir = userDataDirectory()) { return loadUserSettings(root, dataDir); }
 function secretMatches(value, expected) {
   if (typeof value !== 'string' || typeof expected !== 'string') return false;
@@ -36,7 +37,9 @@ function autostartExists(fallback) {
   if (process.platform !== 'win32' || !process.env.APPDATA) return fallback;
   return fs.existsSync(path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'YouTube Discord.lnk'));
 }
-export function createBridge({ root = ROOT, dataDir = userDataDirectory(), config = loadSettings(root, dataDir), port = 49832, rpc = new DiscordRPC(), clock = Date.now, assetFetcher = fetchDiscordAssets } = {}) {
+export function createBridge({ root = ROOT, dataDir = userDataDirectory(), config = loadSettings(root, dataDir), port = 49832, rpc = new DiscordRPC(), clock = Date.now, assetFetcher = fetchDiscordAssets, updater } = {}) {
+  let repository='';try{repository=JSON.parse(fs.readFileSync(path.join(root,'update-channel.json'),'utf8')).repository||'';}catch{}
+  const updates=updater||new UpdateManager({version:VERSION,repository,directory:path.join(dataDir,'updates'),root});
   const sessions = new SessionStore();
   let activeConfig = validateConfig({}, config);
   let lastExtensionAt = 0, lastAck, lastSentAt = 0, lastAttempt = 0, lastConnect = 0;
@@ -80,7 +83,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
     const { token, overlayKey, ...publicConfig } = activeConfig;
     publicConfig.autostart = autostartExists(publicConfig.autostart);
     const { current, display } = resolved();
-    return { version: VERSION, config: publicConfig, connected: rpc.ready, connecting, error: connectionError,
+    return { version: VERSION, update:updates.status(), config: publicConfig, connected: rpc.ready, connecting, error: connectionError,
       extensionConnected: lastExtensionAt > 0 && clock() - lastExtensionAt < 95000,
       desktopConnected: desktopLastAt > 0 && clock() - desktopLastAt < 6000, nativeInfo,
       current, display, published: Boolean(rpc.ready && lastAck), lastSentAt, manualStartedAt,
@@ -143,6 +146,9 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       if (!secretMatches(req.headers['x-bridge-token'], activeConfig.token)) return respond(res, 401, { error: 'Pairing required' });
       try {
         if (req.method === 'GET' && pathname === '/api/status') return respond(res, 200, status());
+        if(req.method==='POST'&&pathname==='/api/updates/check')return respond(res,200,await updates.check());
+        if(req.method==='POST'&&pathname==='/api/updates/download'){updates.download().catch(()=>{});return respond(res,200,updates.status());}
+        if(req.method==='POST'&&pathname==='/api/updates/install'){const result=await updates.install();respond(res,200,result);await shutdown();return;}
         if(req.method==='POST'&&pathname==='/api/images') {
           if(req.headers['content-type']!=='image/png')throw new Error('PNG 이미지가 필요합니다.');
           const bytes=await binaryBody(req,MAX_IMAGE_BYTES),name=decodeURIComponent(req.headers['x-image-name']||'이미지');
@@ -215,7 +221,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       const html = fs.readFileSync(path.join(root, 'ui', 'index.html'), 'utf8').replace('__BRIDGE_TOKEN__', activeConfig.token);
       return respond(res, 200, html, 'text/html; charset=utf-8');
     }
-    const assets = { '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/crop.js':['crop.js','text/javascript'], '/crop-math.js':['crop-math.js','text/javascript'], '/crop.css':['crop.css','text/css'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
+    const assets = { '/updates.js':['updates.js','text/javascript'], '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/crop.js':['crop.js','text/javascript'], '/crop-math.js':['crop-math.js','text/javascript'], '/crop.css':['crop.css','text/css'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
       '/overlay.js': ['overlay.js', 'text/javascript'], '/overlay.css': ['overlay.css', 'text/css'], '/icon.svg': ['icon.svg', 'image/svg+xml'] };
     if (assets[pathname]) {
       const [file, type] = assets[pathname]; return respond(res, 200, fs.readFileSync(path.join(root, 'ui', file)), `${type}; charset=utf-8`);
@@ -225,7 +231,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
   server.requestTimeout = 10000; server.headersTimeout = 10000;
   async function shutdown() {
     if (shuttingDown) return;
-    shuttingDown = true; clearInterval(timer);
+    shuttingDown = true; clearInterval(timer);updates.cancel?.();
     if (rpc.ready) await Promise.race([rpc.setActivity(null).catch(() => {}), new Promise(resolve => setTimeout(resolve, 1500).unref())]);
     rpc.close(); server.close(); server.closeIdleConnections();
   }

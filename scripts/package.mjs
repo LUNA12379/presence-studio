@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const files = [
-  'server.mjs', 'server-v2.mjs', 'package.json', 'config.example.json', 'README.md', '사용방법.txt',
+  'server.mjs', 'server-v2.mjs', 'package.json', 'config.example.json', 'update-channel.json', 'README.md', '사용방법.txt',
   'Start.cmd', 'Start.ps1', 'Autostart.ps1', 'Enable-Autostart.cmd', 'Disable-Autostart.cmd',
   'extension/manifest.json', 'extension/background.js', 'extension/content.js', 'extension/connection.example.js',
   'desktop/Presence Studio.exe', 'desktop/Microsoft.Web.WebView2.Core.dll',

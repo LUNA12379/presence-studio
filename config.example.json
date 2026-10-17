@@ -2,6 +2,7 @@
   "applicationId": "",
   "customApplicationId": "",
   "showGuideOnStartup": true,
+  "checkUpdatesOnStartup": true,
   "enabled": true,
   "mode": "auto",
   "pauseSeconds": 60,
