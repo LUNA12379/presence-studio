@@ -1,4 +1,11 @@
-Presence Studio 2.5.0 — 내 활동, 디스코드, 오버레이를 한곳에서
+Presence Studio 2.6.0 — 내 활동, 디스코드, 오버레이를 한곳에서
+
+언어 선택
+앱 상단 또는 처음 열리는 설명서의 EN / 한국어 버튼으로 언어를 바꿀 수 있어요.
+선택한 언어는 이 PC에 저장되어 앱이나 컴퓨터를 다시 켜도 유지됩니다.
+기존 한국어 사용자는 한국어를 유지하고, 새 설치는 영어로 시작합니다.
+작성한 제목, 프리셋 이름, 사진 이름과 Application ID는 번역하거나 바꾸지 않습니다.
+영어 안내는 README.md, 한국어 안내는 README.ko.md를 열어 주세요.
 
 빠른 시작
 Start.cmd 또는 desktop\Presence Studio.exe를 실행하세요.
@@ -9,7 +16,7 @@ General Information의 Application ID를 연결 & 설정의 '기본 Application 
 이미 확장을 설치했다면 아래의 확장 설치 단계는 다시 할 필요가 없습니다.
 
 설치 프로그램과 업데이트
-- Presence-Studio-2.5.0-Setup.exe 실행 → 설치를 누르세요. 현재 사용자에게 설치하며 관리자 권한은 필요하지 않습니다.
+- Presence-Studio-2.6.0-Setup.exe 실행 → 설치를 누르세요. 현재 사용자에게 설치하며 관리자 권한은 필요하지 않습니다.
 - Node.js가 포함되어 있습니다. WebView2가 없으면 Microsoft 설치 프로그램이 실행되며 인터넷 연결이 필요합니다.
 - 설치 위치: %LOCALAPPDATA%\Programs\Presence Studio. 시작 메뉴 바로가기를 만들고 바탕화면 바로가기는 선택합니다.
 - 기존 ID·프리셋·사진은 유지합니다. Windows의 설치된 앱에서 제거해도 %APPDATA%\PresenceStudio의 개인 데이터는 남습니다.

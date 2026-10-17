@@ -19,12 +19,13 @@ function render(){
   if(!session)return;
   paint(el('cropCanvas'));
   const s=session,contain=s.mode==='contain',output=Number(el('cropSize').value);
-  el('cropZoom').disabled=contain;el('cropZoomValue').textContent=contain?'전체 보기':`${Math.round(s.zoom*100)}%`;
+  el('cropSave').textContent=t(s.saving?'이미지를 보관하는 중…':'이미지 보관하기');
+  el('cropZoom').disabled=contain;el('cropZoomValue').textContent=contain?t('전체 보기'):`${Math.round(s.zoom*100)}%`;
   el('cropCanvas').classList.toggle('is-contained',contain);el('cropGrid').hidden=contain;
   el('cropOutput').textContent=`${output} × ${output} · PNG`;
   const source=contain?Math.max(s.bitmap.width,s.bitmap.height):cropRegion(s.bitmap.width,s.bitmap.height,s.zoom).size;
   el('cropUpscale').hidden=source>=output;
-  el('cropHelp').textContent=contain?'사진 전체를 담고 남는 공간은 투명하게 저장해요.':'사진을 드래그하거나 방향키로 움직이세요. Shift + 방향키로 크게 이동해요.';
+  el('cropHelp').textContent=contain?t('사진 전체를 담고 남는 공간은 투명하게 저장해요.'):t('사진을 드래그하거나 방향키로 움직이세요. Shift + 방향키로 크게 이동해요.');
 }
 function moveBy(dx,dy){
   const s=session;if(!s||s.saving||s.mode==='contain')return;
@@ -38,24 +39,24 @@ function finish(){
 function cancel(){if(session&&!session.saving)el('cropDialog').close();}
 async function save(){
   const s=session;if(!s||s.saving)return;
-  s.saving=true;s.drag=null;el('cropError').textContent='';el('cropSave').textContent='이미지를 보관하는 중…';
+  s.saving=true;s.drag=null;el('cropError').textContent='';el('cropSave').textContent=t('이미지를 보관하는 중…');
   for(const id of ['cropSave','cropCancel','cropClose','cropReset','cropMode','cropZoom','cropSize'])el(id).disabled=true;
   try{
     const canvas=document.createElement('canvas');canvas.width=canvas.height=Number(el('cropSize').value);paint(canvas);
     const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));
-    if(!blob||blob.size>4*1024*1024)throw new Error('PNG 파일이 4MB를 넘어요. 512 × 512 크기를 선택해 다시 저장하세요.');
+    if(!blob||blob.size>4*1024*1024)throw new Error(t('PNG 파일이 4MB를 넘어요. 512 × 512 크기를 선택해 다시 저장하세요.'));
     const stem=s.name.replace(/\.[^.]+$/,'').replace(/-discord-(512|1024)$/,'').slice(0,85)||'image';
     await s.onSave(blob,`${stem}-discord-${canvas.width}.png`);
     s.saved=true;el('cropDialog').close();
-  }catch(error){el('cropError').textContent=error.message||'이미지를 저장하지 못했어요. 다시 시도해 주세요.';}
+  }catch(error){el('cropError').textContent=t(error.message)||t('이미지를 저장하지 못했어요. 다시 시도해 주세요.');}
   finally{
     s.saving=false;
     for(const id of ['cropSave','cropCancel','cropClose','cropReset','cropMode','cropZoom','cropSize'])el(id).disabled=false;
-    el('cropSave').textContent='이미지 보관하기';render();
+    el('cropSave').textContent=t('이미지 보관하기');render();
   }
 }
 function initialize(){
-  if(initialized)return;initialized=true;
+  if(initialized)return;initialized=true;window.addEventListener('studio-language',render);
   el('cropClose').onclick=cancel;el('cropCancel').onclick=cancel;el('cropSave').onclick=save;
   el('cropDialog').addEventListener('cancel',event=>{if(session?.saving)event.preventDefault();});
   el('cropDialog').addEventListener('close',finish);
@@ -81,11 +82,11 @@ function initialize(){
 }
 export function cropImage(bitmap,name,onSave){
   initialize();
-  if(session)return Promise.reject(new Error('열려 있는 이미지 편집을 먼저 마쳐 주세요.'));
+  if(session)return Promise.reject(new Error(t('열려 있는 이미지 편집을 먼저 마쳐 주세요.')));
   return new Promise(resolve=>{
     session={bitmap,name,onSave,resolve,mode:'crop',zoom:1,centerX:.5,centerY:.5,saving:false,focus:document.activeElement};
     el('cropMode').value='crop';el('cropZoom').value=1;el('cropSize').value='1024';el('cropError').textContent='';
-    el('cropSource').textContent=`${name} · 원본 ${bitmap.width} × ${bitmap.height}`;
+    el('cropSource').textContent=t('{name} · 원본 {width} × {height}', {name,width:bitmap.width,height:bitmap.height});
     el('cropDialog').showModal();render();el('cropCanvas').focus();
   });
 }

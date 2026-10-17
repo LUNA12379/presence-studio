@@ -1,6 +1,7 @@
 # Private user settings, including compatibility files from v1/v2.0
 /config.json
 /config.json.*
+/initial-language.txt
 /images/
 /extension/connection.js
 **/edge-extension/

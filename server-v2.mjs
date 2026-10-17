@@ -16,7 +16,7 @@ export { DEFAULTS, validateConfig } from './lib/settings.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-const VERSION = '2.5.0';
+const VERSION = '2.6.0';
 export function loadSettings(root = ROOT, dataDir = userDataDirectory()) { return loadUserSettings(root, dataDir); }
 function secretMatches(value, expected) {
   if (typeof value !== 'string' || typeof expected !== 'string') return false;
@@ -140,7 +140,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
     }
     if (pathname === '/api/overlay' && req.method === 'GET') {
       if (!secretMatches(req.headers['x-overlay-key'], activeConfig.overlayKey)) return respond(res, 401, { error: 'Overlay key required' });
-      return respond(res, 200, { display: resolved().display, style: activeConfig.overlay, enabled: activeConfig.enabled });
+      return respond(res, 200, { display: resolved().display, style: activeConfig.overlay, enabled: activeConfig.enabled, language: activeConfig.language });
     }
     if (pathname.startsWith('/api/')) {
       if (!secretMatches(req.headers['x-bridge-token'], activeConfig.token)) return respond(res, 401, { error: 'Pairing required' });
@@ -218,10 +218,10 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
     }
     if (req.method !== 'GET') return respond(res, 405, { error: 'GET only' });
     if (pathname === '/') {
-      const html = fs.readFileSync(path.join(root, 'ui', 'index.html'), 'utf8').replace('__BRIDGE_TOKEN__', activeConfig.token);
+      const html = fs.readFileSync(path.join(root, 'ui', 'index.html'), 'utf8').replace('__BRIDGE_TOKEN__', activeConfig.token).replace('__LANGUAGE__', activeConfig.language);
       return respond(res, 200, html, 'text/html; charset=utf-8');
     }
-    const assets = { '/updates.js':['updates.js','text/javascript'], '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/crop.js':['crop.js','text/javascript'], '/crop-math.js':['crop-math.js','text/javascript'], '/crop.css':['crop.css','text/css'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
+    const assets = { '/en.json':['en.json','application/json'], '/i18n.js':['i18n.js','text/javascript'], '/updates.js':['updates.js','text/javascript'], '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/crop.js':['crop.js','text/javascript'], '/crop-math.js':['crop-math.js','text/javascript'], '/crop.css':['crop.css','text/css'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
       '/overlay.js': ['overlay.js', 'text/javascript'], '/overlay.css': ['overlay.css', 'text/css'], '/icon.svg': ['icon.svg', 'image/svg+xml'] };
     if (assets[pathname]) {
       const [file, type] = assets[pathname]; return respond(res, 200, fs.readFileSync(path.join(root, 'ui', file)), `${type}; charset=utf-8`);

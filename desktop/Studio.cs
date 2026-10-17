@@ -79,7 +79,7 @@ sealed class StudioForm : Form {
         timer.Tick += async delegate { if (Program.ShowEvent != null && Program.ShowEvent.WaitOne(0)) ShowStudio(); await Poll(); };
     }
     async Task EnsureServer() {
-        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.5.0")) return;
+        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.6.0")) return;
             // Upgrade only this application's v1 bridge, preserving its pairing key.
             if (health.Contains("youtube-discord-local")) {
                 var old = Data.Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Program.SettingsFile));
@@ -93,15 +93,16 @@ sealed class StudioForm : Form {
         string bundledNode = Path.Combine(Program.Root, "runtime", "node.exe");
         var info = new ProcessStartInfo(File.Exists(bundledNode) ? bundledNode : "node.exe", "\"" + Path.Combine(Program.Root, "server.mjs") + "\"") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, WorkingDirectory = Program.Root };
         Process.Start(info);
-        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.5.0")) return; } catch {} }
-        throw new Exception("연결 프로그램을 시작하지 못했습니다. Node.js가 설치되어 있는지 확인하세요.");
+        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.6.0")) return; } catch {} }
+        throw new Exception(Locale.T("연결 프로그램을 시작하지 못했습니다. Node.js가 설치되어 있는지 확인하세요."));
     }
     async Task Initialize() {
         try {
             int dark = 1; try { Native.DwmSetWindowAttribute(Handle, 20, ref dark, 4); } catch {}
+            Locale.ReadSettings(Program.SettingsFile);
             await EnsureServer();
             var config = Data.Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Program.SettingsFile));
-            token = Data.Str(config, "token");
+            token = Data.Str(config, "token"); Locale.Language = Data.Str(config, "language", "ko");
             var environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(Path.GetTempPath(), "PresenceStudioWebView", Program.InstanceKey));
             await view.EnsureCoreWebView2Async(environment);
             view.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
@@ -135,13 +136,19 @@ sealed class StudioForm : Form {
     void OpenExternal(string value) { Uri uri; if (Uri.TryCreate(value, UriKind.Absolute, out uri) && uri.Scheme == "https") Process.Start(new ProcessStartInfo(value) { UseShellExecute = true }); }
     void SetupTray() {
         var menu = new ContextMenuStrip();
-        menu.Items.Add("Presence Studio 열기", null, delegate { ShowStudio(); });
-        menu.Items.Add("활동 표시 켜기 / 끄기  ·  Ctrl+Shift+P", null, async delegate { await TogglePresence(); });
-        menu.Items.Add("오버레이 켜기 / 끄기  ·  Ctrl+Shift+O", null, async delegate { await ToggleOverlay(); });
-        menu.Items.Add("자동 감지로 전환", null, async delegate { await Change(new { sourceMode = "auto" }); });
-        menu.Items.Add(new ToolStripSeparator()); menu.Items.Add("종료", null, async delegate { await Quit(); });
+        menu.Items.Add(Locale.T("Presence Studio 열기"), null, delegate { ShowStudio(); });
+        menu.Items.Add(Locale.T("활동 표시 켜기 / 끄기  ·  Ctrl+Shift+P"), null, async delegate { await TogglePresence(); });
+        menu.Items.Add(Locale.T("오버레이 켜기 / 끄기  ·  Ctrl+Shift+O"), null, async delegate { await ToggleOverlay(); });
+        menu.Items.Add(Locale.T("자동 감지로 전환"), null, async delegate { await Change(new { sourceMode = "auto" }); });
+        menu.Items.Add(new ToolStripSeparator()); menu.Items.Add(Locale.T("종료"), null, async delegate { await Quit(); });
         tray = new NotifyIcon { Icon = Icon, Text = "Presence Studio", Visible = true, ContextMenuStrip = menu };
         tray.DoubleClick += delegate { ShowStudio(); };
+        menu.Opening += delegate { RefreshTrayLanguage(); };
+    }
+    void RefreshTrayLanguage() {
+        if (tray == null) return;
+        string[] labels = {"Presence Studio 열기", "활동 표시 켜기 / 끄기  ·  Ctrl+Shift+P", "오버레이 켜기 / 끄기  ·  Ctrl+Shift+O", "자동 감지로 전환", "", "종료"};
+        for (int i = 0; i < labels.Length; i++) if (labels[i] != "") tray.ContextMenuStrip.Items[i].Text = Locale.T(labels[i]);
     }
     public void ShowStudio() { Show(); if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal; Activate(); }
     async Task<Dictionary<string, object>> Api(string endpoint, object body = null) {
@@ -160,6 +167,7 @@ sealed class StudioForm : Form {
             state = await Api("native/state", new { hotkeyRegistered = hotkey, overlayHotkeyRegistered = overlayHotkey });
             failedPolls = 0;
             var config = Data.Obj(Data.Get(state, "config")); var style = Data.Obj(Data.Get(config, "overlay"));
+            Locale.Language = Data.Str(config, "language", "ko"); RefreshTrayLanguage();
             overlay.UpdateState(Data.Obj(Data.Get(state, "display")), style, Data.Bool(config, "enabled"));
         } catch { if (overlay != null) overlay.Hide(); if (++failedPolls >= 5) { exiting = true; Close(); } }
         finally { busy = false; }
@@ -177,7 +185,7 @@ sealed class StudioForm : Form {
                 if (verifyPath != null && Environment.GetEnvironmentVariable("PRESENCE_STUDIO_VERIFY_MUTATIONS") == "1" && !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PRESENCE_STUDIO_DATA_DIR"))) {
                     e.ResultFilePath = Path.Combine(verifyPath, "exported-image.png"); verificationDownload = e.DownloadOperation;
                 } else {
-                    using (var dialog = new SaveFileDialog { Title = "Discord에 올릴 PNG 저장", Filter = "PNG 이미지 (*.png)|*.png", FileName = Path.GetFileName(e.ResultFilePath), DefaultExt = "png", AddExtension = true, OverwritePrompt = true }) {
+                    using (var dialog = new SaveFileDialog { Title = Locale.T("Discord에 올릴 PNG 저장"), Filter = Locale.T("PNG 이미지 (*.png)|*.png"), FileName = Path.GetFileName(e.ResultFilePath), DefaultExt = "png", AddExtension = true, OverwritePrompt = true }) {
                         if (dialog.ShowDialog(this) == DialogResult.OK) e.ResultFilePath = dialog.FileName; else e.Cancel = true;
                     }
                 }
@@ -236,6 +244,23 @@ sealed class StudioForm : Form {
             if(!updateFinished || await view.CoreWebView2.ExecuteScriptAsync("!!window.studioUpdateVerification.error") == "true")throw new Exception(await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioUpdateVerification)"));
             File.WriteAllText(Path.Combine(verifyPath,"updates.json"),await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioUpdateVerification)"));
             using(var stream=File.Create(Path.Combine(verifyPath,"updates.png")))await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
+            await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(Path.Combine(Program.Root,"test","ui-locale-workflow.js")));
+            bool localeFinished=false;
+            for(int i=0;i<160;i++) {
+                await Task.Delay(150);
+                string capture=Data.Json.Deserialize<string>(await view.CoreWebView2.ExecuteScriptAsync("window.studioLocaleCapture || null"));
+                if(capture=="custom-en"||capture=="dashboard-en"||capture=="settings-en"||capture=="guide-en"||capture=="crop-en") {
+                    using(var stream=File.Create(Path.Combine(verifyPath,capture+".png")))await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
+                    await view.CoreWebView2.ExecuteScriptAsync("window.studioLocaleCapture=null");
+                }
+                if(await view.CoreWebView2.ExecuteScriptAsync("window.studioLocaleVerification && window.studioLocaleVerification.done")=="true"){localeFinished=true;break;}
+            }
+            if(!localeFinished||await view.CoreWebView2.ExecuteScriptAsync("!!window.studioLocaleVerification.error")=="true")throw new Exception(await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioLocaleVerification)"));
+            File.WriteAllText(Path.Combine(verifyPath,"language.json"),await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioLocaleVerification)"));
+            view.CoreWebView2.Reload();await Task.Delay(2200);
+            if(await view.CoreWebView2.ExecuteScriptAsync("document.documentElement.lang==='en' && latest.config.language==='en' && document.querySelector('#savePreset').textContent.includes('Save as preset')")!="true")throw new Exception("Language did not survive a full page reload");
+            File.WriteAllText(Path.Combine(verifyPath,"language-reload.txt"),"English persisted across a full page reload");
+            Locale.ReadSettings(Program.SettingsFile);
         }
         await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#guideDialog').close();document.querySelector('[data-panel=home]').click()");
         string result = await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify({title:document.title,ready:!!document.querySelector('#sourceMode'),text:document.body.innerText.slice(0,3500)})");
@@ -348,9 +373,9 @@ sealed class OverlayForm : Form {
         Color foreground = light ? Color.FromArgb(32, 38, 58) : Color.FromArgb(239, 242, 252), muted = light ? Color.FromArgb(108, 117, 139) : Color.FromArgb(149, 161, 187);
         Color accent; try { accent = ColorTranslator.FromHtml(Data.Str(style, "accent", "#a8b5ff")); } catch { accent = Color.LightSteelBlue; }
         using (var brush = new SolidBrush(accent)) g.FillEllipse(brush, 18, 18, 6, 6);
-        string type = Data.Num(data, "type") == 2 ? "LISTENING" : Data.Num(data, "type") == 3 ? "WATCHING" : "PLAYING";
+        string type = Data.Num(data, "type") == 2 ? Locale.T("듣는 중") : Data.Num(data, "type") == 3 ? Locale.T("시청 중") : Locale.T("플레이 중");
         Label(g, data.Count == 0 ? "PRESENCE STUDIO" : type, 29, 11, Width - 90, 19, 7.5f, muted, true);
-        if (Data.Bool(data, "paused")) Label(g, "PAUSED", Width - 75, 11, 60, 19, 7, muted);
+        if (Data.Bool(data, "paused")) Label(g, Locale.T("일시정지"), Width - 75, 11, 60, 19, 7, muted);
         int x = 18, y = compact ? 37 : 43, picture = compact ? 40 : 64;
         if (Data.Bool(style, "showImage", true)) {
             Rectangle rect = new Rectangle(x, y, picture, picture);
@@ -361,8 +386,8 @@ sealed class OverlayForm : Form {
             } else { using (var b = new SolidBrush(Color.FromArgb(40, accent))) using (var rounded = Rounded(rect, 9)) g.FillPath(b, rounded); Label(g, "P", x, y, picture, picture, compact ? 17 : 24, accent, true); }
             x += picture + 14;
         }
-        Label(g, Data.Str(data, "title", "지금은 잠시 쉬는 중"), x, y, Width - x - 18, compact ? 21 : 29, compact ? 10 : 11.5f, foreground, true);
-        Label(g, Data.Str(data, "subtitle", "재생을 시작하면 자동으로 표시됩니다"), x, y + (compact ? 22 : 32), Width - x - 18, 22, 8.5f, muted);
+        Label(g, Data.Str(data, "title", Locale.T("지금은 잠시 쉬는 중")), x, y, Width - x - 18, compact ? 21 : 29, compact ? 10 : 11.5f, foreground, true);
+        Label(g, Data.Str(data, "subtitle", Locale.T("재생을 시작하면 자동으로 표시됩니다")), x, y + (compact ? 22 : 32), Width - x - 18, 22, 8.5f, muted);
         if (!compact && Data.Bool(style, "showProgress", true) && data.Count > 0) {
             double position = Data.Num(data, "position"); if (!Data.Bool(data, "paused") && !Data.Bool(data, "live")) position += Math.Max(0, Data.Now - Data.Num(data, "updatedAt", Data.Now)) / 1000 * Data.Num(data, "rate", 1);
             double duration = Data.Num(data, "duration"); int barWidth = Width - 122;

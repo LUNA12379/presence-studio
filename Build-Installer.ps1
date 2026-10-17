@@ -25,16 +25,17 @@ $signature = Get-AuthenticodeSignature -LiteralPath $webview
 if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation,') { throw 'WebView2 bootstrapper must have a valid Microsoft signature.' }
 if ($Repository) { [System.IO.File]::WriteAllText((Join-Path $stage 'update-channel.json'), (@{repository=$Repository} | ConvertTo-Json)) }
 $compiler = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+$localeSource = Join-Path $PSScriptRoot 'desktop/Locale.cs'
 $source = Join-Path $PSScriptRoot 'installer\Installer.cs'
 $versionFile = Join-Path $build 'version.txt'
 [System.IO.File]::WriteAllText($versionFile,$version)
-$common = @('/nologo','/target:winexe','/platform:x64','/optimize+','/codepage:65001',('/win32manifest:'+(Join-Path $PSScriptRoot 'desktop\Studio.manifest')),('/win32icon:'+(Join-Path $PSScriptRoot 'desktop\studio.ico')),('/resource:'+$versionFile+',version.txt'),'/reference:System.dll','/reference:System.Core.dll','/reference:System.Drawing.dll','/reference:System.Windows.Forms.dll','/reference:System.Net.Http.dll','/reference:System.Web.Extensions.dll','/reference:System.IO.Compression.dll','/reference:System.IO.Compression.FileSystem.dll','/reference:Microsoft.CSharp.dll')
-& $compiler @common ('/out:'+(Join-Path $stage 'PresenceStudio-Uninstall.exe')) $source
+$common = @(('/resource:'+(Join-Path $PSScriptRoot 'ui/en.json')+',en.json'),'/nologo','/target:winexe','/platform:x64','/optimize+','/codepage:65001',('/win32manifest:'+(Join-Path $PSScriptRoot 'desktop\Studio.manifest')),('/win32icon:'+(Join-Path $PSScriptRoot 'desktop\studio.ico')),('/resource:'+$versionFile+',version.txt'),'/reference:System.dll','/reference:System.Core.dll','/reference:System.Drawing.dll','/reference:System.Windows.Forms.dll','/reference:System.Net.Http.dll','/reference:System.Web.Extensions.dll','/reference:System.IO.Compression.dll','/reference:System.IO.Compression.FileSystem.dll','/reference:Microsoft.CSharp.dll')
+& $compiler @common ('/out:'+(Join-Path $stage 'PresenceStudio-Uninstall.exe')) $source $localeSource
 if ($LASTEXITCODE -ne 0) { throw 'Uninstaller build failed.' }
 $payload = Join-Path $build 'payload.zip'
 Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $payload -CompressionLevel Optimal
 $output = Join-Path $PSScriptRoot "dist\Presence-Studio-$version-Setup.exe"
-& $compiler @common ('/resource:'+$payload+',payload.zip') ('/resource:'+$webview+',webview.exe') ('/out:'+$output) $source
+& $compiler @common ('/resource:'+$payload+',payload.zip') ('/resource:'+$webview+',webview.exe') ('/out:'+$output) $source $localeSource
 if ($LASTEXITCODE -ne 0) { throw 'Installer build failed.' }
 $checksum = (Get-FileHash -LiteralPath $output -Algorithm SHA256).Hash.ToLowerInvariant()
 [System.IO.File]::WriteAllText($output+'.sha256',($checksum+'  '+[System.IO.Path]::GetFileName($output)+[Environment]::NewLine))

@@ -6,5 +6,7 @@ $arguments = @('/nologo','/target:winexe','/platform:x64','/optimize+','/codepag
 if (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'studio.ico')) { $arguments += '/win32icon:' + (Join-Path $PSScriptRoot 'studio.ico') }
 foreach ($reference in $references) { $arguments += '/reference:' + $reference }
 $arguments += Join-Path $PSScriptRoot 'Studio.cs'
+$arguments += Join-Path $PSScriptRoot 'Locale.cs'
+$arguments += '/resource:' + (Join-Path (Split-Path -Parent $PSScriptRoot) 'ui/en.json') + ',en.json'
 & $compilerPath $arguments
 if ($LASTEXITCODE -ne 0) { throw 'Desktop build failed.' }
