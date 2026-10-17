@@ -2,6 +2,7 @@ const token = document.querySelector('meta[name="bridge-token"]').content;
 const $ = id => document.getElementById(id);
 const dirty = new Set(), hydrated = new Set();
 let latest, timerNotice, overlayTimer, stopping = false, sessionsSignature = '', presetsSignature = '', queue = Promise.resolve();
+let selectedPresetId = '', presetBusy = false;
 const names = { home: '지금 내 활동', custom: '직접 꾸미기', overlay: '오버레이', presets: '프리셋', settings: '연결 & 설정' };
 const kind = type => type === 2 ? '듣는 중' : type === 3 ? '시청 중' : '플레이 중';
 const time = value => { const n = Math.max(0, Math.floor(value || 0)); return n >= 3600 ? `${Math.floor(n / 3600)}:${String(Math.floor(n / 60) % 60).padStart(2,'0')}:${String(n % 60).padStart(2,'0')}` : `${Math.floor(n / 60)}:${String(n % 60).padStart(2,'0')}`; };
@@ -54,10 +55,54 @@ function renderSessions(data) {
 function presetCard(p, starter=false) {
   const card=document.createElement('article');card.className='card preset-card';const icon=document.createElement('div');icon.className='preset-symbol';icon.textContent=starter?p.symbol:'◇';const title=document.createElement('h3');title.textContent=p.name;const subtitle=document.createElement('p');subtitle.textContent=p.manual.title+(p.manual.state?' · '+p.manual.state:'');
   const actions=document.createElement('div');actions.className='button-row';const apply=document.createElement('button');apply.className=starter?'':'primary';apply.textContent=starter?'이 내용으로 꾸미기':'바로 적용';
-  apply.onclick=async()=>{if(starter){dirty.add('manualForm');setManual(p.manual);$('presetName').value=p.name;panel('custom');return;}try{render(await mutate('presets/apply',{id:p.id}));notify(`${p.name} 활동으로 바꿨어요.`);}catch(e){notify(e.message);}};actions.append(apply);
-  if(!starter){const remove=document.createElement('button');remove.textContent='삭제';remove.onclick=async()=>{try{render(await mutate('presets/delete',{id:p.id}));notify('프리셋을 삭제했어요.');}catch(e){notify(e.message);}};actions.append(remove);}card.append(icon,title,subtitle,actions);return card;
+  apply.onclick=async()=>{if(starter){selectedPresetId='';dirty.add('manualForm');setManual(p.manual);updatePresetControls();panel('custom');return;}try{const result=await mutate('presets/apply',{id:p.id});selectedPresetId=p.id;dirty.delete('manualForm');render(result);notify(`${p.name} 활동으로 바꿨어요.`);}catch(e){notify(e.message);}};actions.append(apply);
+  if(!starter){const edit=document.createElement('button');edit.textContent='불러오기';edit.onclick=()=>{loadPreset(p.id);panel('custom');};const remove=document.createElement('button');remove.textContent='삭제';remove.onclick=async()=>{try{render(await mutate('presets/delete',{id:p.id}));notify('프리셋을 삭제했어요.');}catch(e){notify(e.message);}};actions.append(edit,remove);}card.append(icon,title,subtitle,actions);return card;
 }
-function renderPresets(data){const signature=JSON.stringify(data.config.presets);if(signature===presetsSignature)return;presetsSignature=signature;$('presetsList').replaceChildren();if(!data.config.presets.length){const empty=document.createElement('div');empty.className='empty-presets';empty.textContent='아직 저장한 프리셋이 없어요. 직접 꾸미기에서 첫 활동을 저장해 보세요.';$('presetsList').append(empty);}for(const preset of data.config.presets)$('presetsList').append(presetCard(preset));}
+function updatePresetControls() {
+  const presets=latest?.config.presets||[], selected=presets.find(p=>p.id===selectedPresetId);
+  if(!selected)selectedPresetId='';
+  $('savedPreset').value=selectedPresetId;
+  $('savedPreset').disabled=presetBusy||!presets.length;
+  $('presetCount').textContent=`${presets.length} / 30`;
+  $('savePreset').disabled=presetBusy||presets.length>=30;
+  $('updatePreset').hidden=!selected;
+  $('updatePreset').disabled=presetBusy;
+  $('presetStatus').textContent=presets.length>=30?'30개를 모두 사용 중이에요. 기존 항목을 덮어쓰거나 프리셋 메뉴에서 삭제하세요.':presets.length?'목록에서 고르면 편집 내용이 불러와져요. Discord에 표시하려면 ‘이 활동으로 표시하기’를 누르세요.':'아직 저장한 프리셋이 없어요. 활동을 꾸민 뒤 위 저장 버튼을 눌러 보세요.';
+}
+function loadPreset(id) {
+  const preset=latest?.config.presets.find(p=>p.id===id);
+  if(!preset){selectedPresetId='';updatePresetControls();return;}
+  selectedPresetId=preset.id;dirty.add('manualForm');setManual(preset.manual);updatePresetControls();
+  notify(`${preset.name} 프리셋을 불러왔어요.`);
+}
+function renderPresets(data) {
+  const presets=data.config.presets,signature=JSON.stringify(presets);
+  if(signature!==presetsSignature){
+    presetsSignature=signature;$('presetsList').replaceChildren();
+    $('savedPreset').replaceChildren(new Option(presets.length?'저장한 프리셋을 선택하세요':'저장한 프리셋이 없어요',''));
+    if(!presets.length){const empty=document.createElement('div');empty.className='empty-presets';empty.textContent='아직 저장한 프리셋이 없어요. 직접 꾸미기에서 첫 활동을 저장해 보세요.';$('presetsList').append(empty);}
+    for(const preset of presets){$('presetsList').append(presetCard(preset));$('savedPreset').append(new Option(preset.name,preset.id));}
+  }
+  updatePresetControls();
+}
+async function savePreset(replace=false) {
+  if(presetBusy||!latest||!$('manualForm').reportValidity())return;
+  const selected=latest.config.presets.find(p=>p.id===selectedPresetId);
+  if(replace&&!selected)return;
+  const manual=getManual();
+  if(!manual.title){notify('활동 제목을 입력하세요.');$('manualTitle').focus();return;}
+  // A new preset uses the activity title; updating keeps the existing preset's name.
+  const previousIds=new Set(latest.config.presets.map(p=>p.id));
+  const body={name:replace?selected.name:manual.title,manual,...(replace?{id:selected.id}:{})};
+  presetBusy=true;dirty.add('manualForm');updatePresetControls();
+  try{
+    const result=await mutate('presets/save',body);
+    const saved=replace?result.config.presets.find(p=>p.id===selected.id):result.config.presets.find(p=>!previousIds.has(p.id));
+    if(saved)selectedPresetId=saved.id;
+    render(result);notify(replace?'선택한 프리셋에 수정 내용을 저장했어요.':'저장한 프리셋 목록에 추가했어요.');
+  }catch(e){notify(e.message);}
+  finally{presetBusy=false;updatePresetControls();}
+}
 function render(data) {
   const firstLoad=!latest; latest=data; $('offline').hidden=true;syncMedia(data);hydrate(data);
   $('setupNotice').hidden=data.applicationIdConfigured;
@@ -90,7 +135,9 @@ $('sourceAuto').onclick=()=>patch({sourceMode:'auto'},'자동 감지로 바꿨�
 $('quickOverlay').onchange=async()=>{await patch({overlay:{enabled:$('quickOverlay').checked}});if(latest?.config.overlay.enabled&&!latest.desktopConnected){try{await mutate('desktop-open',{});notify('데스크톱 앱을 열고 있어요.');}catch(e){notify(e.message);}}};
 $('manualForm').addEventListener('submit',async event=>{event.preventDefault();try{const result=await mutate('config',{manual:getManual(),sourceMode:'manual',enabled:true});dirty.delete('manualForm');render(result);notify('직접 꾸민 활동을 표시하고 있어요.');}catch(e){notify(e.message);}});
 $('restartTimer').onclick=async()=>{try{render(await mutate('timer/restart',{}));notify('타이머를 다시 시작했어요.');}catch(e){notify(e.message);}};
-$('savePreset').onclick=async()=>{try{render(await mutate('presets/save',{name:$('presetName').value.trim(),manual:getManual()}));notify('프리셋을 저장했어요.');}catch(e){notify(e.message);}};
+$('savePreset').onclick=()=>savePreset();
+$('updatePreset').onclick=()=>savePreset(true);
+$('savedPreset').onchange=()=>loadPreset($('savedPreset').value);
 $('identityForm').addEventListener('submit',async event=>{
   event.preventDefault();$('saveApplicationId').disabled=true;$('identitySaved').textContent='저장 중…';
   try{const result=await mutate('config',{applicationId:$('applicationId').value.trim(),customApplicationId:$('customApplicationId').value.trim()});dirty.delete('identityForm');render(result);$('identitySaved').textContent='이 PC에 저장했어요. 앱을 다시 켜도 자동으로 불러옵니다.';notify('Application ID를 저장했어요. Discord 연결을 확인합니다.');}

@@ -1,6 +1,6 @@
 {
   "name": "youtube-discord-local",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "private": true,
   "type": "module",
   "scripts": { "start": "node server.mjs", "test": "node --test test/*.test.mjs" },
