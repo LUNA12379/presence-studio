@@ -1,7 +1,12 @@
 importScripts('connection.js');
 const BASE = 'http://127.0.0.1:49832';
-function youtube(url) {
-  try { return ['www.youtube.com', 'music.youtube.com'].includes(new URL(url).hostname); } catch { return false; }
+const SITES = ['https://www.youtube.com/*', 'https://music.youtube.com/*', 'https://soundcloud.com/*', 'https://www.soundcloud.com/*'];
+function sourceFor(url) {
+  try {
+    const parsed = new URL(url);
+    if (parsed.protocol !== 'https:' || parsed.port || parsed.username || parsed.password) return '';
+    return { 'www.youtube.com': 'youtube', 'music.youtube.com': 'music', 'soundcloud.com': 'soundcloud', 'www.soundcloud.com': 'soundcloud' }[parsed.hostname] || '';
+  } catch { return ''; }
 }
 async function relay(session) {
   try {
@@ -14,23 +19,25 @@ async function relay(session) {
   }
 }
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
-  if (message?.kind !== 'youtube-presence' || sender.tab?.id == null || !youtube(sender.url) || sender.frameId !== 0) return;
+  const source = sourceFor(sender.url);
+  if (!['youtube-presence', 'media-presence'].includes(message?.kind) || sender.tab?.id == null || !source || sender.frameId !== 0 || !message.session || (message.session.closed !== true && message.session.source !== source)) return;
   relay({ ...message.session, tabId: sender.tab.id, active: sender.tab.active }).then(() => reply({ ok: true }));
   return true;
 });
 chrome.tabs.onRemoved.addListener(tabId => { relay({ tabId, closed: true }); });
 chrome.tabs.onUpdated.addListener((tabId, change) => {
-  if (change.status === 'loading' || (change.url && !youtube(change.url))) relay({ tabId, closed: true });
+  if (change.status === 'loading' || (change.url && !sourceFor(change.url))) relay({ tabId, closed: true });
 });
 async function refresh() {
-  const tabs = await chrome.tabs.query({ url: ['https://www.youtube.com/*', 'https://music.youtube.com/*'] });
+  const tabs = await chrome.tabs.query({ url: SITES });
   await Promise.all(tabs.map(tab => chrome.tabs.sendMessage(tab.id, { kind: 'refresh-presence' }).catch(() => relay({ tabId: tab.id, closed: true }))));
 }
 async function initialize() {
-  await chrome.alarms.create('refresh-youtube', { periodInMinutes: 0.5 });
+  await chrome.alarms.clear('refresh-youtube');
+  await chrome.alarms.create('refresh-media', { periodInMinutes: 0.5 });
   await refresh();
 }
-chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'refresh-youtube') refresh(); });
+chrome.alarms.onAlarm.addListener(alarm => { if (alarm.name === 'refresh-media' || alarm.name === 'refresh-youtube') refresh(); });
 chrome.runtime.onInstalled.addListener(initialize);
 chrome.runtime.onStartup.addListener(initialize);
 chrome.action.onClicked.addListener(() => chrome.tabs.create({ url: BASE }));

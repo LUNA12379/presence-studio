@@ -68,8 +68,9 @@ function renderSessions(data) {
   $('sessions').replaceChildren(); $('emptySessions').hidden=!!data.sessions.length;
   for(const session of data.sessions) {
     const row=document.createElement('div'); row.className='session-row';
-    const icon=document.createElement('span'); icon.className='session-icon';icon.textContent=session.source==='music'?'♫':'▶';
-    const info=document.createElement('div');info.className='session-info';const title=document.createElement('strong');title.textContent=session.title;const subtitle=document.createElement('small');subtitle.textContent=`${session.channel||'YouTube'} · ${session.paused?t('일시정지'):t('재생 중')}`;info.append(title,subtitle);
+    const source={youtube:'YouTube',music:'YouTube Music',soundcloud:'SoundCloud'}[session.source]||'';
+    const icon=document.createElement('span'); icon.className='session-icon';icon.textContent=session.source==='youtube'?'▶':'♫';
+    const info=document.createElement('div');info.className='session-info';const title=document.createElement('strong');title.textContent=session.title;const subtitle=document.createElement('small');subtitle.textContent=`${source}${session.channel?' · '+session.channel:''} · ${session.paused?t('일시정지'):t('재생 중')}`;info.append(title,subtitle);
     const button=document.createElement('button');const pinned=data.config.pinnedTabId===session.tabId;button.textContent=pinned?t('고정 해제'):t('이 탭 고정');
     button.addEventListener('click',async()=>{try{render(await mutate('config',{pinnedTabId:pinned?null:session.tabId}));notify(pinned?t('탭 고정을 해제했어요.'):t('이 탭의 활동만 표시해요.'));}catch(e){notify(t(e.message));}});row.append(icon,info,button);$('sessions').append(row);
   }
@@ -140,11 +141,11 @@ function render(data) {
   $('nativeBadge').textContent=data.desktopConnected?t('데스크톱 연결됨'):t('브라우저 모드');
   const d=data.display; const hasImage=!!d?.image&&$('nowImage').dataset.failed!==d.image;$('nowImage').hidden=!hasImage;$('nowPlaceholder').hidden=hasImage;
   if(hasImage&&$('nowImage').getAttribute('src')!==d.image)$('nowImage').src=d.image;
-  $('nowTitle').textContent=d?.title||(!data.config.enabled?t('지금은 나만의 시간'):t('당신의 다음 순간을 기다려요'));$('nowSubtitle').textContent=d?.subtitle||(!data.config.enabled?t('활동 공유 스위치를 켜면 다시 표시됩니다.'):t('유튜브를 재생하거나 나만의 활동을 만들어 보세요.'));
+  $('nowTitle').textContent=d?.title||(!data.config.enabled?t('지금은 나만의 시간'):t('당신의 다음 순간을 기다려요'));$('nowSubtitle').textContent=d?.subtitle||(!data.config.enabled?t('활동 공유 스위치를 켜면 다시 표시됩니다.'):t('영상·음악을 재생하거나 나만의 활동을 만들어 보세요.'));
   $('nowType').textContent=d?`${kind(d.type)}${d.paused?t(' · 일시정지'):''}`:'READY WHEN YOU ARE';
   const pos=d?Math.max(0,d.position+(d.paused?0:Math.max(0,Date.now()-d.updatedAt)/1000*(d.rate||1))):0;
   $('nowPosition').textContent=!d?'—':d.live?'LIVE':d.timer==='none'?'—':time(d.duration?Math.min(pos,d.duration):pos);$('nowDuration').textContent=d?.duration?time(d.duration):d?.timer==='elapsed'?t('경과'):'—';$('nowProgress').value=d?.duration?Math.min(100,pos/d.duration*100):0;
-  $('nowSource').textContent=d?({youtube:t('YouTube · 자동 감지'),music:t('YouTube Music · 자동 감지'),manual:t('직접 입력한 활동')}[d.source]):t('재생 중인 활동이 없어요');
+  $('nowSource').textContent=d?({youtube:t('YouTube · 자동 감지'),music:t('YouTube Music · 자동 감지'),soundcloud:t('SoundCloud · 자동 감지'),manual:t('직접 입력한 활동')}[d.source]):t('재생 중인 활동이 없어요');
   for(const [id,connected]of[['discordState',data.connected],['edgeState',data.extensionConnected],['desktopState',data.desktopConnected]]){$(id).textContent=connected?t('연결됨'):t('대기');$(id).classList.toggle('green',connected);}
   $('connectionError').textContent=t(data.error||'');$('extensionPath').textContent=data.extensionPath;$('obsUrl').value=data.overlayUrl;
   const previewUrl=data.overlayUrl.replace('/overlay#','/overlay?preview=1#');if($('overlayPreview').getAttribute('src')!==previewUrl)$('overlayPreview').src=previewUrl;fitOverlay();

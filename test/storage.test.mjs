@@ -13,7 +13,7 @@ function fixture(t) {
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'presence-storage-'));
   t.after(()=>{assert.ok(path.resolve(root).startsWith(path.resolve(os.tmpdir())+path.sep+'presence-storage-'));fs.rmSync(root,{recursive:true,force:true});});
   fs.mkdirSync(path.join(root,'extension'));
-  for(const name of ['manifest.json','background.js','content.js'])fs.copyFileSync(path.join(ROOT,'extension',name),path.join(root,'extension',name));
+  for(const name of ['manifest.json','background.js','content.js','soundcloud-reader.js','soundcloud.js'])fs.copyFileSync(path.join(ROOT,'extension',name),path.join(root,'extension',name));
   return root;
 }
 test('fresh installs have no application ID and unique per-user connection keys',t=>{
@@ -44,7 +44,7 @@ test('migrated user settings take priority over old app copies and preserve pres
 });
 test('distribution allowlist excludes personal data even when present beside app files',t=>{
   const root=fixture(t),source=path.join(root,'source'),destination=path.join(root,'package');
-  fs.mkdirSync(source);const required=['server.mjs','server-v2.mjs','package.json','config.example.json','update-channel.json','ui/en.json','README.md','README.ko.md','사용방법.txt','Start.cmd','Start.ps1','Autostart.ps1','Enable-Autostart.cmd','Disable-Autostart.cmd','extension/manifest.json','extension/background.js','extension/content.js','extension/connection.example.js','desktop/Presence Studio.exe','desktop/Microsoft.Web.WebView2.Core.dll','desktop/Microsoft.Web.WebView2.WinForms.dll','desktop/WebView2Loader.dll','desktop/studio.ico','desktop/WebView2-LICENSE.txt','desktop/THIRD-PARTY.txt','lib/storage.mjs','ui/index.html'];
+  fs.mkdirSync(source);const required=['server.mjs','server-v2.mjs','package.json','config.example.json','update-channel.json','ui/en.json','README.md','README.ko.md','사용방법.txt','Start.cmd','Start.ps1','Autostart.ps1','Enable-Autostart.cmd','Disable-Autostart.cmd','extension/manifest.json','extension/background.js','extension/content.js','extension/connection.example.js','extension/soundcloud-reader.js','extension/soundcloud.js','desktop/Presence Studio.exe','desktop/Microsoft.Web.WebView2.Core.dll','desktop/Microsoft.Web.WebView2.WinForms.dll','desktop/WebView2Loader.dll','desktop/studio.ico','desktop/WebView2-LICENSE.txt','desktop/THIRD-PARTY.txt','lib/storage.mjs','ui/index.html'];
   for(const file of required){fs.mkdirSync(path.dirname(path.join(source,file)),{recursive:true});fs.writeFileSync(path.join(source,file),'public content');}
   for(const file of ['config.json','extension/connection.js','.env'])fs.writeFileSync(path.join(source,file),'private test marker');
   const included=stagePackage(source,destination);assert.equal(included.length,required.length);

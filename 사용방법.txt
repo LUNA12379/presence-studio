@@ -1,4 +1,4 @@
-Presence Studio 2.6.1 — 내 활동, 디스코드, 오버레이를 한곳에서
+Presence Studio 2.7.0 — 내 활동, 디스코드, 오버레이를 한곳에서
 
 언어 선택
 앱 상단 또는 처음 열리는 설명서의 EN / 한국어 버튼으로 언어를 바꿀 수 있어요.
@@ -16,7 +16,7 @@ General Information의 Application ID를 연결 & 설정의 '기본 Application 
 이미 확장을 설치했다면 아래의 확장 설치 단계는 다시 할 필요가 없습니다.
 
 설치 프로그램과 업데이트
-- Presence-Studio-2.6.1-Setup.exe 실행 → 설치를 누르세요. 현재 사용자에게 설치하며 관리자 권한은 필요하지 않습니다.
+- Presence-Studio-2.7.0-Setup.exe 실행 → 설치를 누르세요. 현재 사용자에게 설치하며 관리자 권한은 필요하지 않습니다.
 - Node.js가 포함되어 있습니다. WebView2가 없으면 Microsoft 설치 프로그램이 실행되며 인터넷 연결이 필요합니다.
 - 설치 위치: %LOCALAPPDATA%\Programs\Presence Studio. 시작 메뉴 바로가기를 만들고 바탕화면 바로가기는 선택합니다.
 - 기존 ID·프리셋·사진은 유지합니다. Windows의 설치된 앱에서 제거해도 %APPDATA%\PresenceStudio의 개인 데이터는 남습니다.
@@ -178,3 +178,11 @@ Discord 설정
 공식 문서
 https://discord.com/developers/docs/topics/rpc
 https://learn.microsoft.com/en-us/microsoft-edge/extensions/getting-started/extension-sideloading
+
+SoundCloud 사용하기
+- 앱 업데이트 후 Edge 또는 Chrome 확장 관리에서 Presence Studio — YouTube & SoundCloud 확장을 새로고침하세요.
+- SoundCloud 접근 권한을 확인하고 SoundCloud 탭을 새로고침한 다음 곡을 재생하세요.
+- 곡명·아티스트·커버·시간과 일시정지를 읽으며, 자동 활동 종류는 듣는 중입니다.
+- 여러 재생 탭 중 마지막으로 재생을 시작한 탭이 우선이며, 이 탭 고정으로 고정할 수 있습니다.
+- 기존 Application ID는 유지됩니다. 앱 이름이 YouTube라면 SoundCloud 활동도 그 앱 이름 아래에 표시됩니다.
+- 브라우저 웹사이트만 지원하며 비공개 곡 링크는 공유하지 않습니다.

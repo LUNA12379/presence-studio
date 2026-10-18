@@ -11,7 +11,7 @@ import { resolveActivity } from '../lib/activity.mjs';
 import { SessionStore } from '../lib/presence.mjs';
 const PNG=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jP1kAAAAASUVORK5CYII=','base64');
 const MAIN='123456789012345678',CUSTOM='987654321098765432',ASSET='234567890123456789';
-function fixture(t){const root=fs.mkdtempSync(path.join(os.tmpdir(),'presence-images-'));t.after(()=>{assert.ok(path.resolve(root).startsWith(path.resolve(os.tmpdir())+path.sep+'presence-images-'));fs.rmSync(root,{recursive:true,force:true});});fs.mkdirSync(path.join(root,'extension'));for(const file of ['manifest.json','background.js','content.js'])fs.copyFileSync(path.join(ROOT,'extension',file),path.join(root,'extension',file));return root;}
+function fixture(t){const root=fs.mkdtempSync(path.join(os.tmpdir(),'presence-images-'));t.after(()=>{assert.ok(path.resolve(root).startsWith(path.resolve(os.tmpdir())+path.sep+'presence-images-'));fs.rmSync(root,{recursive:true,force:true});});fs.mkdirSync(path.join(root,'extension'));for(const file of ['manifest.json','background.js','content.js','soundcloud-reader.js','soundcloud.js'])fs.copyFileSync(path.join(ROOT,'extension',file),path.join(root,'extension',file));return root;}
 test('local images are copied, deduplicated, bounded and survive a new library instance',t=>{
   const root=fixture(t),library=new ImageLibrary(root),entry=library.importPng(PNG,'내 이미지.png');
   assert.equal(library.importPng(PNG,'duplicate.png').id,entry.id);assert.equal(library.list().length,1);

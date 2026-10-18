@@ -1,12 +1,15 @@
 {
   "manifest_version": 3,
-  "name": "YouTube → Discord 활동",
-  "version": "1.0.0",
-  "description": "Edge의 YouTube와 YouTube Music 재생 정보를 내 PC의 Discord 활동으로 표시합니다.",
+  "name": "Presence Studio — YouTube & SoundCloud",
+  "version": "1.1.0",
+  "description": "Show YouTube, YouTube Music and SoundCloud playback in Discord through the local Presence Studio app.",
   "permissions": ["alarms"],
-  "host_permissions": ["http://127.0.0.1:49832/*", "https://www.youtube.com/*", "https://music.youtube.com/*"],
+  "host_permissions": ["http://127.0.0.1:49832/*", "https://www.youtube.com/*", "https://music.youtube.com/*", "https://soundcloud.com/*", "https://www.soundcloud.com/*"],
   "background": { "service_worker": "background.js" },
-  "content_scripts": [{ "matches": ["https://www.youtube.com/*", "https://music.youtube.com/*"], "js": ["content.js"], "run_at": "document_idle" }],
-  "action": { "default_title": "YouTube → Discord 설정" },
+  "content_scripts": [
+    { "matches": ["https://www.youtube.com/*", "https://music.youtube.com/*"], "js": ["content.js"], "run_at": "document_idle" },
+    { "matches": ["https://soundcloud.com/*", "https://www.soundcloud.com/*"], "js": ["soundcloud-reader.js", "soundcloud.js"], "run_at": "document_idle" }
+  ],
+  "action": { "default_title": "Presence Studio" },
   "incognito": "not_allowed"
 }

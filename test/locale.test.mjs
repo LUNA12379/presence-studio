@@ -14,7 +14,7 @@ const messages=JSON.parse(fs.readFileSync(path.join(ROOT,'ui/en.json'),'utf8'));
 function fixture(t){
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'presence-locale-'));
   fs.mkdirSync(path.join(root,'extension'));
-  for(const file of ['manifest.json','background.js','content.js'])fs.copyFileSync(path.join(ROOT,'extension',file),path.join(root,'extension',file));
+  for(const file of ['manifest.json','background.js','content.js','soundcloud-reader.js','soundcloud.js'])fs.copyFileSync(path.join(ROOT,'extension',file),path.join(root,'extension',file));
   t.after(()=>{assert.ok(root.startsWith(path.join(os.tmpdir(),'presence-locale-')));fs.rmSync(root,{recursive:true,force:true});});
   return root;
 }

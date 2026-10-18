@@ -39,7 +39,7 @@ test('v1 migration preserves application ID, pairing key and preferences',()=>{
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'presence-migration-'));const token='ab'.repeat(32);
   try{
     fs.mkdirSync(path.join(root,'extension'));
-    for(const name of ['manifest.json','background.js','content.js']) fs.copyFileSync(path.join(ROOT,'extension',name),path.join(root,'extension',name));
+    for(const name of ['manifest.json','background.js','content.js','soundcloud-reader.js','soundcloud.js']) fs.copyFileSync(path.join(ROOT,'extension',name),path.join(root,'extension',name));
     fs.writeFileSync(path.join(root,'config.json'),JSON.stringify({applicationId:'123456789012345678',token,enabled:false,mode:'listening',pauseSeconds:30}));
     const dataDir=path.join(root,'user-data'), config=loadSettings(root,dataDir);
     assert.equal(config.applicationId,'123456789012345678');assert.equal(config.token,token);assert.equal(config.enabled,false);assert.equal(config.sourceMode,'auto');assert.equal(config.mode,'listening');assert.match(config.overlayKey,/^[a-f0-9]{64}$/);assert.equal(config.overlay.enabled,false);

@@ -7,6 +7,7 @@ const files = [
   'server.mjs', 'server-v2.mjs', 'package.json', 'config.example.json', 'update-channel.json', 'ui/en.json', 'README.md', 'README.ko.md', '사용방법.txt',
   'Start.cmd', 'Start.ps1', 'Autostart.ps1', 'Enable-Autostart.cmd', 'Disable-Autostart.cmd',
   'extension/manifest.json', 'extension/background.js', 'extension/content.js', 'extension/connection.example.js',
+  'extension/soundcloud-reader.js', 'extension/soundcloud.js',
   'desktop/Presence Studio.exe', 'desktop/Microsoft.Web.WebView2.Core.dll',
   'desktop/Microsoft.Web.WebView2.WinForms.dll', 'desktop/WebView2Loader.dll',
   'desktop/studio.ico', 'desktop/WebView2-LICENSE.txt', 'desktop/THIRD-PARTY.txt'
