@@ -56,7 +56,7 @@ function fitOverlay() { if (!latest) return; const width = latest.config.overlay
 function hydrate(data) {
   const c = data.config;
   if (!dirty.has('manualForm')) { setManual(c.manual); hydrated.add('manualForm'); }
-  if (!dirty.has('identityForm')) { $('applicationId').value=c.applicationId; $('customApplicationId').value=c.customApplicationId||''; }
+  if (!dirty.has('identityForm')) { $('applicationId').value=c.applicationId; $('customApplicationId').value=c.customApplicationId||''; $('soundcloudApplicationId').value=c.soundcloudApplicationId||''; }
   if (!dirty.has('settingsForm')) { $('mode').value=c.mode; $('pauseSeconds').value=c.pauseSeconds; $('excludedKeywords').value=c.excludedKeywords.join('\n'); $('autostart').checked=c.autostart; hydrated.add('settingsForm'); }
   if (!dirty.has('overlayForm')) {
     const s=c.overlay; $('overlayTheme').value=s.theme; $('overlayAccent').value=s.accent; $('overlayWidth').value=s.width; $('overlayOpacity').value=s.opacity;
@@ -167,7 +167,7 @@ $('updatePreset').onclick=()=>savePreset(true);
 $('savedPreset').onchange=()=>loadPreset($('savedPreset').value);
 $('identityForm').addEventListener('submit',async event=>{
   event.preventDefault();$('saveApplicationId').disabled=true;$('identitySaved').textContent=t('저장 중…');
-  try{const result=await mutate('config',{applicationId:$('applicationId').value.trim(),customApplicationId:$('customApplicationId').value.trim()});dirty.delete('identityForm');render(result);$('identitySaved').textContent=t('이 PC에 저장했어요. 앱을 다시 켜도 자동으로 불러옵니다.');notify(t('Application ID를 저장했어요. Discord 연결을 확인합니다.'));}
+  try{const result=await mutate('config',{applicationId:$('applicationId').value.trim(),customApplicationId:$('customApplicationId').value.trim(),soundcloudApplicationId:$('soundcloudApplicationId').value.trim()});dirty.delete('identityForm');render(result);$('identitySaved').textContent=t('이 PC에 저장했어요. 앱을 다시 켜도 자동으로 불러옵니다.');notify(t('Application ID를 저장했어요. Discord 연결을 확인합니다.'));}
   catch(e){$('identitySaved').textContent=t('저장하지 못했어요. ')+t(e.message);notify(t(e.message));}
   finally{$('saveApplicationId').disabled=false;}
 });

@@ -1,6 +1,7 @@
 {
   "language": "en",
   "applicationId": "",
+  "soundcloudApplicationId": "",
   "customApplicationId": "",
   "showGuideOnStartup": true,
   "checkUpdatesOnStartup": true,

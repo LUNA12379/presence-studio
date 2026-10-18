@@ -14,7 +14,7 @@ function syncMedia(data){
   if(signature!==imageSignature){imageSignature=signature;imageCatalog=data.images||[];const selected=$('localImage').value;$('localImage').replaceChildren(imageOption('',t('이미지 없음')),...imageCatalog.map(item=>imageOption(item.id,item.name)));$('localImage').value=selected;}
   const applicationId=data.config.customApplicationId||data.config.applicationId;
   $('registerDiscordImage').href=applicationId?`https://discord.com/developers/applications/${applicationId}/rich-presence/assets`:'https://discord.com/developers/applications';
-  $('manualIdentityNote').textContent=data.config.customApplicationId?t('직접 꾸민 활동은 커스텀 전용 애플리케이션의 이름으로 표시해요. 자동 감지는 기본 애플리케이션을 사용합니다.'):t('현재 커스텀 활동도 기본 애플리케이션의 이름으로 표시해요. 설정에 커스텀 전용 ID를 저장하면 자동 감지와 다른 이름을 쓸 수 있어요.');
+  $('manualIdentityNote').textContent=data.config.customApplicationId?t('직접 꾸민 활동은 커스텀 전용 애플리케이션의 이름으로 표시해요. YouTube는 기본 ID, SoundCloud는 설정한 전용 ID를 사용합니다.'):t('현재 커스텀 활동도 기본 애플리케이션의 이름으로 표시해요. 설정에 커스텀 전용 ID를 저장하면 자동 감지와 다른 이름을 쓸 수 있어요.');
   $('discordImageTarget').textContent=applicationId?t('조회 대상: {kind} 애플리케이션 · {id}', {kind:data.config.customApplicationId?t('커스텀 전용'):t('기본'),id:applicationId}):t('먼저 연결 & 설정에서 Application ID를 저장하세요.');
   if(assetsApplicationId&&assetsApplicationId!==applicationId){assetsApplicationId='';discordAssets=[];$('discordImage').replaceChildren(imageOption('',t('기본 앱 이미지')));$('discordImageStatus').textContent=t('ID가 바뀌었어요. 목록을 새로 불러오세요.');}
   updateImageActions();

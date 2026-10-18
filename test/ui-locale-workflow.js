@@ -6,22 +6,24 @@
   const switchTo=async language=>{document.querySelector(`.topbar [data-language="${language}"]`).click();await wait(()=>!languageBusy&&latest.config.language===language&&document.documentElement.lang===language);};
   const capture=async name=>{window.studioLocaleCapture=name;await wait(()=>!window.studioLocaleCapture);};
   try{
-    const original=JSON.stringify([latest.config.manual,latest.config.presets,latest.config.applicationId,latest.config.customApplicationId]);
+    const original=JSON.stringify([latest.config.manual,latest.config.presets,latest.config.applicationId,latest.config.customApplicationId,latest.config.soundcloudApplicationId]);
     panel('custom');await wait(()=>!$('refreshDiscordImages').disabled);
     const draftTitle='내 활동 <b>저장 안 한 문구</b>',draftState='한국어 사용자 문구는 그대로';
     $('manualTitle').value=draftTitle;$('manualState').value=draftState;$('manualTitle').dispatchEvent(new Event('input',{bubbles:true}));
     const draftImage=mediaFields();
     $('applicationId').value='987654321098765432';$('applicationId').dispatchEvent(new Event('input',{bubbles:true}));
+    $('soundcloudApplicationId').value='345678901234567890';$('soundcloudApplicationId').dispatchEvent(new Event('input',{bubbles:true}));
     await switchTo('en');await refresh();
     assert($('pageName').textContent==='Customize','Breadcrumb did not switch to English');
     assert($('manualTitle').value===draftTitle&&$('manualState').value===draftState,'Switch discarded activity draft');
     assert($('manualPreviewTitle').textContent===draftTitle&&!$('manualPreviewTitle').querySelector('b'),'User content was translated or interpreted as HTML');
     assert($('applicationId').value==='987654321098765432','Unsaved ID was overwritten');
+    assert($('soundcloudApplicationId').value==='345678901234567890','Unsaved SoundCloud ID was overwritten');
     assert(JSON.stringify(mediaFields())===JSON.stringify(draftImage),'Image selection changed');
     assert($('savePreset').textContent.includes('Save as preset')&&$('localImage').options[0].text==='No image','Editor controls were not translated');
     assert($('manualTimer').querySelector('[value="countdown"]').textContent==='Time remaining','Timer options were not translated');
     assert(t('타이머 분: 1~1440 범위를 입력하세요.')==='Timer minutes must be between 1 and 1440.','Validation translation failed');
-    assert(JSON.stringify([latest.config.manual,latest.config.presets,latest.config.applicationId,latest.config.customApplicationId])===original,'Language save changed stored content or identity');
+    assert(JSON.stringify([latest.config.manual,latest.config.presets,latest.config.applicationId,latest.config.customApplicationId,latest.config.soundcloudApplicationId])===original,'Language save changed stored content or identity');
     await capture('custom-en');
     const editing=editLocalImage();await wait(()=>$('cropDialog').open);
     assert($('cropTitle').textContent==='Frame your image'&&$('cropSave').textContent==='Save image','Crop editor was not translated');
@@ -36,7 +38,13 @@
     panel('custom');assert($('savePreset').textContent.includes('프리셋으로 저장'),'Korean controls were not restored');
     await switchTo('en');
     const first=await api('status');assert(first.config.language==='en','Language was not saved on server');
+    panel('settings');$('applicationId').value=latest.config.applicationId;
+    const existingIds=JSON.stringify([latest.config.applicationId,latest.config.customApplicationId]);
+    $('saveApplicationId').click();await wait(()=>latest.config.soundcloudApplicationId==='345678901234567890'&&!dirty.has('identityForm'));
+    assert(JSON.stringify([latest.config.applicationId,latest.config.customApplicationId])===existingIds,'Saving SoundCloud ID changed other IDs');
+    assert($('soundcloudIdentityHelp').textContent.includes('No bot token'),'SoundCloud help was not translated');
+    await capture('settings-en');await switchTo('ko');await capture('settings-ko');await switchTo('en');
     // Leave English persisted so the native verifier can reload the entire page.
-    window.studioLocaleVerification={done:true,english:true,korean:true,draftPreserved:true,identityPreserved:true,imagesPreserved:true,userContentPreserved:true,guide:true,updates:true};
+    window.studioLocaleVerification={done:true,english:true,korean:true,draftPreserved:true,identityPreserved:true,soundcloudIdSaved:true,imagesPreserved:true,userContentPreserved:true,guide:true,updates:true};
   }catch(error){window.studioLocaleVerification={done:true,error:error.stack||error.message};}
 })();

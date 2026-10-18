@@ -79,7 +79,7 @@ sealed class StudioForm : Form {
         timer.Tick += async delegate { if (Program.ShowEvent != null && Program.ShowEvent.WaitOne(0)) ShowStudio(); await Poll(); };
     }
     async Task EnsureServer() {
-        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.7.0")) return;
+        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.7.1")) return;
             // Upgrade only this application's v1 bridge, preserving its pairing key.
             if (health.Contains("youtube-discord-local")) {
                 var old = Data.Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Program.SettingsFile));
@@ -93,7 +93,7 @@ sealed class StudioForm : Form {
         string bundledNode = Path.Combine(Program.Root, "runtime", "node.exe");
         var info = new ProcessStartInfo(File.Exists(bundledNode) ? bundledNode : "node.exe", "\"" + Path.Combine(Program.Root, "server.mjs") + "\"") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, WorkingDirectory = Program.Root };
         Process.Start(info);
-        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.7.0")) return; } catch {} }
+        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.7.1")) return; } catch {} }
         throw new Exception(Locale.T("연결 프로그램을 시작하지 못했습니다. Node.js가 설치되어 있는지 확인하세요."));
     }
     async Task Initialize() {
@@ -262,7 +262,7 @@ sealed class StudioForm : Form {
             for(int i=0;i<160;i++) {
                 await Task.Delay(150);
                 string capture=Data.Json.Deserialize<string>(await view.CoreWebView2.ExecuteScriptAsync("window.studioLocaleCapture || null"));
-                if(capture=="custom-en"||capture=="dashboard-en"||capture=="settings-en"||capture=="guide-en"||capture=="crop-en") {
+                if(capture=="custom-en"||capture=="dashboard-en"||capture=="settings-en"||capture=="settings-ko"||capture=="guide-en"||capture=="crop-en") {
                     using(var stream=File.Create(Path.Combine(verifyPath,capture+".png")))await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
                     await view.CoreWebView2.ExecuteScriptAsync("window.studioLocaleCapture=null");
                 }
@@ -273,6 +273,7 @@ sealed class StudioForm : Form {
             view.CoreWebView2.Reload();await Task.Delay(2200);
             if(await view.CoreWebView2.ExecuteScriptAsync("document.documentElement.lang==='en' && latest.config.language==='en' && document.querySelector('#savePreset').textContent.includes('Save as preset')")!="true")throw new Exception("Language did not survive a full page reload");
             File.WriteAllText(Path.Combine(verifyPath,"language-reload.txt"),"English persisted across a full page reload");
+            if(await view.CoreWebView2.ExecuteScriptAsync("latest.config.soundcloudApplicationId==='345678901234567890' && document.querySelector('#soundcloudApplicationId').value==='345678901234567890'")!="true")throw new Exception("SoundCloud ID did not survive a full page reload");
             Locale.ReadSettings(Program.SettingsFile);
         }
         await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#guideDialog').close();document.querySelector('[data-panel=home]').click()");

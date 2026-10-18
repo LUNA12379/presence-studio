@@ -16,7 +16,7 @@ export { DEFAULTS, validateConfig } from './lib/settings.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-const VERSION = '2.7.0';
+const VERSION = '2.7.1';
 export function loadSettings(root = ROOT, dataDir = userDataDirectory()) { return loadUserSettings(root, dataDir); }
 function secretMatches(value, expected) {
   if (typeof value !== 'string' || typeof expected !== 'string') return false;
@@ -42,6 +42,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
   const updates=updater||new UpdateManager({version:VERSION,repository,directory:path.join(dataDir,'updates'),root});
   const sessions = new SessionStore();
   let activeConfig = validateConfig({}, config);
+  let rpcApplicationId = rpc.ready ? effectiveApplicationId(activeConfig) : '', connectionRevision = 0;
   let lastExtensionAt = 0, lastAck, lastSentAt = 0, lastAttempt = 0, lastConnect = 0;
   let connectionError = '', connecting = false, sending = false, shuttingDown = false;
   let manualStartedAt = clock(), desktopLastAt = 0, nativeInfo = {}, configRevision = 0;
@@ -57,39 +58,51 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
     return value;
   };
   async function tick() {
-    if (shuttingDown || !effectiveApplicationId(activeConfig)) return;
+    if (shuttingDown) return;
+    const selection = resolved(), applicationId = effectiveApplicationId(activeConfig, selection.current?.source);
+    if (applicationId !== rpcApplicationId) {
+      // Invalidate replies from the previous application before changing the connection.
+      connectionRevision++; rpc.close(); rpcApplicationId = applicationId;
+      lastAck = undefined; lastConnect = 0; lastAttempt = 0; connectionError = '';
+    }
+    if (!applicationId) return;
     const now = clock();
     if (!rpc.ready) {
       if (connecting || now - lastConnect < 5000) return;
       connecting = true; lastConnect = now;
-      const revision = configRevision;
-      try { await rpc.connect(effectiveApplicationId(activeConfig)); if (revision === configRevision) connectionError = ''; }
-      catch (error) { if (revision === configRevision) connectionError = error.message; }
+      const revision = configRevision, connection = connectionRevision;
+      try {
+        await rpc.connect(applicationId);
+        if (connection !== connectionRevision || shuttingDown) rpc.close();
+        else if (revision === configRevision) connectionError = '';
+      }
+      catch (error) { if (revision === configRevision && connection === connectionRevision) connectionError = error.message; }
       finally { connecting = false; }
       return;
     }
-    const desired = resolved().activity;
+    const desired = selection.activity;
     if (sending || now - lastAttempt < 3000 || !activityChanged(lastAck, desired)) return;
     sending = true; lastAttempt = now;
-    const revision = configRevision;
+    const revision = configRevision, connection = connectionRevision;
     try {
       await rpc.setActivity(desired);
-      if (revision === configRevision && rpc.ready) { lastAck = desired; lastSentAt = clock(); connectionError = ''; }
+      if (revision === configRevision && connection === connectionRevision && rpc.ready) { lastAck = desired; lastSentAt = clock(); connectionError = ''; }
       else lastAck = undefined;
-    } catch (error) { lastAck = undefined; if (revision === configRevision) connectionError = error.message; }
+    } catch (error) { lastAck = undefined; if (revision === configRevision && connection === connectionRevision) connectionError = error.message; }
     finally { sending = false; }
   }
   function status() {
     const { token, overlayKey, ...publicConfig } = activeConfig;
     publicConfig.autostart = autostartExists(publicConfig.autostart);
     const { current, display } = resolved();
-    return { version: VERSION, update:updates.status(), config: publicConfig, connected: rpc.ready, connecting, error: connectionError,
+    const applicationId = effectiveApplicationId(activeConfig, current?.source), connected = rpc.ready && rpcApplicationId === applicationId;
+    return { version: VERSION, update:updates.status(), config: publicConfig, connected, connecting, error: connectionError,
       extensionConnected: lastExtensionAt > 0 && clock() - lastExtensionAt < 95000,
       desktopConnected: desktopLastAt > 0 && clock() - desktopLastAt < 6000, nativeInfo,
-      current, display, published: Boolean(rpc.ready && lastAck), lastSentAt, manualStartedAt,
+      current, display, published: Boolean(connected && lastAck), lastSentAt, manualStartedAt,
       sessions: [...sessions.sessions.values()].map(s => ({ tabId: s.tabId, title: s.title, channel: s.channel, source: s.source, paused: s.paused })),
       overlayUrl: `${origin}/overlay#key=${overlayKey}`, extensionPath: path.join(dataDir, 'edge-extension'), appPath: root,
-      applicationIdConfigured: Boolean(effectiveApplicationId(activeConfig)), effectiveApplicationId:effectiveApplicationId(activeConfig), settingsPath: path.join(dataDir, 'config.json'), images:imageList() };
+      applicationIdConfigured: Boolean(applicationId), effectiveApplicationId:applicationId, settingsPath: path.join(dataDir, 'config.json'), images:imageList() };
   }
   function updateConfig(body) {
     const result = configQueue.then(() => commitConfig(body));
@@ -103,10 +116,8 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       const powershell = path.join(process.env.WINDIR || 'C:\\Windows', 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
       await execFileAsync(powershell, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'Autostart.ps1'), ...(next.autostart ? ['-Enable'] : [])], { windowsHide: true, timeout: 10000 });
     }
-    const reconnect = effectiveApplicationId(next) !== effectiveApplicationId(activeConfig);
     if (next.sourceMode === 'manual' && (activeConfig.sourceMode !== 'manual' || JSON.stringify(next.manual) !== JSON.stringify(activeConfig.manual))) manualStartedAt = clock();
     saveSettings(dataDir, next); activeConfig = next; configRevision++;
-    if (reconnect) { rpc.close(); lastAck = undefined; lastConnect = 0; }
     lastAttempt = 0; await tick();
   }
   function respond(res, code, value, type = 'application/json; charset=utf-8') {

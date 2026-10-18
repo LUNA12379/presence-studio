@@ -2,6 +2,13 @@
 
 This file contains private source-development notes. Public user guides are in [README.md](README.md) and [README.ko.md](README.ko.md). Only those two files currently belong in the public `LUNA12379/presence-studio-releases` repository. The update channel points to that public repository; never upload private source history or personal settings there.
 
+## 2.7.1 — separate SoundCloud application identity
+
+- `soundcloudApplicationId` is optional and persisted with the other identities. The selected SoundCloud session uses it; empty values fall back to `applicationId`. Manual mode still uses `customApplicationId` or the default.
+- The bridge resolves the selected source before connecting or sending. A connection revision prevents late acknowledgements or handshakes from publishing stale identity state during a service change. Retries keep the existing connection backoff.
+- `test/soundcloud-identity.test.mjs` covers actual RPC target selection, pinning, manual mode, fallback, settings persistence in a new process, and delayed connection/acknowledgement races. Native verification covers the optional field, language switches, form submission and full page reload.
+- Extension files are unchanged from 2.7.0; this update does not require another extension reload.
+
 ## 2.7.0 — SoundCloud browser support
 
 - Extension 1.1.0 adds only SoundCloud's two website origins. `soundcloud-reader.js` reads the persistent miniplayer DOM; `soundcloud.js` observes playback changes and sends the existing paired local protocol. No SoundCloud credentials or API token are needed.
@@ -128,20 +135,21 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Package.ps1
 
 **목록 새로고침**은 이전에 비어 있던 목록을 다시 사용하는 대신 Discord에 최신 목록을 요청합니다. 여전히 비어 있다면 조회 대상 ID와 개발자 페이지의 저장 여부를 확인하세요. 이미지는 자동으로 외부에 업로드되지 않습니다. 직접 URL을 쓰려는 경우에는 **링크와 이미지 주소 (고급)**에서 입력할 수 있습니다.
 
-## 앱을 두 개 만드는 이유와 이름 주의사항
+## 활동별 앱 이름과 전용 ID
 
-Discord 카드의 앱 이름은 연결한 Discord 애플리케이션 이름을 따릅니다. 자동 감지와 직접 꾸민 활동을 다른 이름으로 표시하려면 앱을 두 개 만드세요.
+현재 연결 방식에서는 Discord 카드의 앱 이름이 연결한 애플리케이션 이름을 따릅니다. 활동별로 다른 이름을 쓰려면 전용 ID를 선택적으로 저장합니다.
 
-1. **자동 감지용 앱**: 예를 들어 `YouTube`라는 이름으로 만들고 **기본 Application ID**에 저장합니다.
-2. **커스텀 활동용 앱**: `Presence Studio` 등 원하는 이름으로 하나 더 만들고 **커스텀 활동 전용 Application ID**에 저장합니다.
+1. **기본 Application ID**: YouTube·YouTube Music와 전용 ID가 없는 활동에 사용합니다.
+2. **SoundCloud 전용 Application ID**: SoundCloud라는 이름의 앱을 만들고 저장하면 선택된 사클 탭에 사용합니다.
+3. **커스텀 활동 전용 Application ID**: Presence Studio 등 원하는 이름의 앱을 만들어 직접 꾸미기에 사용합니다.
 
-**주의: 앱 이름을 `YouTube`로 정하고 같은 ID를 커스텀 활동에도 쓰면, 게임·작업 문구를 입력해도 앱 이름은 YouTube로 남고 Discord가 작은 유튜브 로고를 붙여 유튜브 활동처럼 보일 수 있습니다.** 실제 감지 범위가 이름 때문에 바뀌는 것은 아닙니다. 이 로고는 Discord가 이름에 따라 붙이는 플랫폼 표시이며, General Information의 App Icon이나 Art Assets에서 고른 큰 사진과 별개입니다.
+기본 앱 이름이 YouTube이면 전용 ID가 없는 SoundCloud와 커스텀 활동도 그 이름으로 표시됩니다. 상단 작은 로고는 Discord가 표시하므로 SoundCloud 이름만으로 로고가 자동으로 붙는 것은 보장하지 않습니다.
 
-자동 감지는 기본 ID를, 직접 꾸민 활동은 커스텀 ID를 사용하며 전환할 때 Discord 연결도 자동으로 바뀝니다. 같은 앱 이름을 사용해도 된다면 전용 ID를 비워 두고 앱 하나만 사용해도 됩니다. 이미지를 추가할 때도 커스텀 ID가 있으면 해당 앱의 Art Assets 목록을 불러옵니다. 두 ID는 저장 후 앱과 PC를 다시 켜도 유지됩니다.
+선택된 활동에 맞춰 Discord 연결을 전환합니다. 전용 ID를 비우면 기본 ID로 연결합니다. 커스텀 이미지 목록은 기존처럼 커스텀 ID가 있으면 해당 앱의 Art Assets를 조회합니다. 저장한 ID는 앱·PC를 다시 켜도 유지됩니다.
 
 ## 시작 설명서
 
-앱을 열면 시작하기, 이미지 자르기·등록, 두 앱의 이름과 아이콘, 프리셋, 설치·업데이트, 오버레이를 다루는 6단계 설명서가 표시됩니다. 마지막 페이지에서 **앱을 켤 때 다시 표시하지 않기**를 체크하고 **저장하고 시작하기**를 누르면 재실행 후에도 숨김 설정이 유지됩니다. 중간에 닫으면 다음 실행 때 다시 표시됩니다. **연결 & 설정 → 설명서 보기**에서는 언제든 다시 열 수 있고, 마지막 페이지의 체크를 해제해 시작 시 표시를 다시 켤 수 있습니다.
+앱을 열면 시작하기, 이미지 자르기·등록, 활동별 앱 이름과 아이콘, 프리셋, 설치·업데이트, 오버레이를 다루는 6단계 설명서가 표시됩니다. 마지막 페이지에서 **앱을 켤 때 다시 표시하지 않기**를 체크하고 **저장하고 시작하기**를 누르면 재실행 후에도 숨김 설정이 유지됩니다. 중간에 닫으면 다음 실행 때 다시 표시됩니다. **연결 & 설정 → 설명서 보기**에서는 언제든 다시 열 수 있고, 마지막 페이지의 체크를 해제해 시작 시 표시를 다시 켤 수 있습니다.
 
 ## 설정과 연결
 
@@ -149,7 +157,7 @@ Discord 카드의 앱 이름은 연결한 Discord 애플리케이션 이름을 �
 - v1/v2.0의 프로그램 폴더에 있던 `config.json`은 사용자 설정이 아직 없을 때 한 번 가져옵니다. 기존 ID, 확장 연결 키, 프리셋을 유지하며 기존 파일을 삭제하지 않습니다. 이후에는 사용자별 설정을 우선합니다.
 - 이미 설치한 구버전 확장도 연결 키가 유지되므로 계속 동작합니다. 업데이트를 받으려면 앱이 안내하는 새 확장 폴더를 로드하고 이전 확장은 제거하세요.
 - `127.0.0.1:49832`에서 로컬 서버를 실행합니다. 확장 및 설정 변경은 로컬 연결 키로 인증하며, OBS에는 표시 전용 키를 사용합니다.
-- 시청 기록은 파일에 저장하지 않습니다. 확장은 YouTube와 YouTube Music에서만 동작하며 InPrivate에서는 정보를 전달하지 않습니다.
+- 시청 기록은 파일에 저장하지 않습니다. 확장은 YouTube·YouTube Music·SoundCloud에서 동작하며 InPrivate에서는 정보를 전달하지 않습니다.
 - 이미지 표시 시 해당 이미지 서버에 요청합니다. 수동 이미지에는 공개 HTTPS 이미지 URL을 사용하세요.
 - Discord 이미지 목록은 애플리케이션 ID로 공개 Art Assets 목록만 조회합니다. 로그인 비밀번호나 사용자·봇 토큰을 받지 않습니다.
 - Discord에 표시되는 앱 이름은 본인의 Discord Application 이름에 따라 결정됩니다.
