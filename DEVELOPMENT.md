@@ -32,7 +32,7 @@ This file contains private source-development notes. Public user guides are in [
 - `test/locale.test.mjs` covers migration, API persistence across processes, guide catalogs and Discord labels. The isolated native verifier runs `test/ui-locale-workflow.js` to check both languages, unsaved drafts, image selections and full page reloads.
 
 
-Edge에서 재생하는 YouTube / YouTube Music을 Discord 활동으로 표시하는 Windows 앱입니다. 직접 입력한 활동, 프리셋, 데스크톱 오버레이와 OBS 브라우저 소스를 한곳에서 관리합니다.
+Edge 또는 Chrome에서 재생하는 YouTube / YouTube Music / SoundCloud를 Discord 활동으로 표시하는 Windows 앱입니다. 직접 입력한 활동, 프리셋, 데스크톱 오버레이와 OBS 브라우저 소스를 한곳에서 관리합니다.
 
 ## 시작하기
 
@@ -40,12 +40,12 @@ Windows 10/11 x64와 .NET Framework 4.7.2 이상이 필요합니다. 설치 프�
 
 1. `Presence-Studio-2.7.0-Setup.exe`로 설치하고 시작 메뉴에서 실행합니다. ZIP 버전은 폴더에 풀고 `Start.cmd`를 실행합니다. 소스만 내려받았다면 먼저 아래 빌드를 실행합니다.
 2. [Discord 개발자 페이지](https://discord.com/developers/applications)의 **New Application**에서 **Discord 활동에 표시하고 싶은 이름**으로 앱을 만듭니다. General Information의 Application ID를 복사해 **연결 & 설정 → 기본 Application ID**에 입력하고 **ID 저장 후 연결**을 누릅니다. 봇 토큰이나 계정 비밀번호는 필요하지 않습니다.
-3. 같은 화면의 **Edge 확장 연결 → 폴더 경로 복사**를 누릅니다. Edge의 `edge://extensions`에서 개발자 모드를 켜고 **압축 풀린 확장 로드**로 그 폴더를 선택합니다.
+3. 같은 화면의 **브라우저 확장 연결 → 폴더 경로 복사**를 누릅니다. Edge의 `edge://extensions` 또는 Chrome의 `chrome://extensions`에서 개발자 모드를 켜고 **압축 풀린 확장 로드**로 그 폴더를 선택합니다.
 4. YouTube 탭을 새로고침하고 재생합니다. Discord에서 활동 공유도 켜 주세요.
 
 처음 실행하면 개인 ID가 비어 있습니다. 저장한 ID와 프리셋, 오버레이 설정은 `%APPDATA%\PresenceStudio\config.json`에 기록되어 앱 종료와 Windows 재시작 후에도 유지됩니다. 이 파일을 삭제하면 설정이 초기화됩니다.
 
-확장은 앱이 `%APPDATA%\PresenceStudio\edge-extension`에 자동으로 준비합니다. 저장소의 `extension` 폴더는 소스이므로 직접 로드하지 마세요. 앱 업데이트 후 Edge 확장 관리에서 새로고침하면 새 확장 코드가 적용됩니다.
+확장은 앱이 `%APPDATA%\PresenceStudio\edge-extension`에 자동으로 준비합니다. 저장소의 `extension` 폴더는 소스이므로 직접 로드하지 마세요. 확장 파일이 바뀌면 사용하는 Edge 또는 Chrome의 확장 관리에서 새로고침하면 새 확장 코드가 적용됩니다.
 
 ## 기능
 
@@ -90,7 +90,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Package.ps1
 
 시작 메뉴 바로가기와 Windows 앱 제거 항목을 만들며 바탕화면 바로가기는 선택할 수 있습니다. 기존 앱을 종료하고 파일 교체에 실패하면 이전 설치 파일을 복구합니다. 기존 자동 실행 바로가기가 있으면 설치 경로로 갱신합니다. ID·프리셋·사진은 `%APPDATA%\PresenceStudio`에 그대로 유지하고, 앱 제거 시에도 지우지 않습니다.
 
-**연결 & 설정 → 앱 업데이트**에서 확인 → 변경 내용 확인 → 다운로드 → **설치하고 다시 시작** 순서로 진행합니다. 실행 시 확인을 켜도 파일을 자동으로 다운로드하거나 설치하지 않습니다. 배포처 미연결, 네트워크 오류, 공개 배포 없음은 최신 버전과 구분해서 표시합니다. 확장 파일도 앱 실행 시 사용자 확장 폴더로 갱신됩니다. 파일이 변경된 확장은 Edge 확장 관리 및 YouTube 탭에서 새로고침해야 합니다.
+**연결 & 설정 → 앱 업데이트**에서 확인 → 변경 내용 확인 → 다운로드 → **설치하고 다시 시작** 순서로 진행합니다. 실행 시 확인을 켜도 파일을 자동으로 다운로드하거나 설치하지 않습니다. 배포처 미연결, 네트워크 오류, 공개 배포 없음은 최신 버전과 구분해서 표시합니다. 확장 파일도 앱 실행 시 사용자 확장 폴더로 갱신됩니다. 파일이 변경된 확장은 사용하는 Edge 또는 Chrome의 확장 관리 및 YouTube·SoundCloud 탭에서 새로고침해야 합니다.
 
 `update-channel.json`은 공개 배포 전용 저장소 `LUNA12379/presence-studio-releases`를 가리킵니다. 소스 저장소는 비공개로 유지합니다. 초기 미연결 버전 사용자는 최신 설치 파일을 한 번 설치하면 이후 정식 배포를 앱에서 확인할 수 있습니다.
 
@@ -164,6 +164,6 @@ powershell -NoProfile -ExecutionPolicy Bypass -File Package.ps1
 
 ## 파일 구성
 
-`desktop/`은 WinForms 셸과 네이티브 오버레이, `ui/`는 설정 화면, `lib/`는 설정 저장·활동 선택·Discord IPC, `extension/`은 Edge 확장 소스입니다. `server-v2.mjs`가 로컬 API와 상태를 관리합니다.
+`desktop/`은 WinForms 셸과 네이티브 오버레이, `ui/`는 설정 화면, `lib/`는 설정 저장·활동 선택·Discord IPC, `extension/`은 Edge·Chrome 공용 확장 소스입니다. `server-v2.mjs`가 로컬 API와 상태를 관리합니다.
 
 프로그램 폴더 전체를 직접 압축해서 배포하지 말고 `Package.ps1`을 사용하세요. 개인용 `config.json`, 생성된 `connection.js`, `.env` 등은 Git에서 제외됩니다.
