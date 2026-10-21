@@ -88,7 +88,7 @@ function worker(storage = {}, userAgent = 'Chrome/120', options = {}) {
   let writes = 0, fail = options.failOnce;
   const event = key => ({ addListener: fn => handlers[key] = fn });
   const api = {
-    runtime: { onMessage: event('message'), onInstalled: event('installed'), onStartup: event('startup') },
+    runtime: { getManifest: () => ({ version: '1.3.0' }), onMessage: event('message'), onInstalled: event('installed'), onStartup: event('startup') },
     storage: { local: { get: async () => { if (fail) { fail = false; throw Error('Storage unavailable'); } return { ...storage }; }, set: async value => { writes++; Object.assign(storage, value); } } },
     action: { setBadgeText: async value => badges.push(value.text), setBadgeBackgroundColor: async () => {}, onClicked: event('click') },
     tabs: { onRemoved: event('removed'), onUpdated: event('updated'), query: async () => [{ id: 7 }], sendMessage: async () => { throw Error('No receiver'); } },
@@ -102,11 +102,12 @@ function worker(storage = {}, userAgent = 'Chrome/120', options = {}) {
 
 test('extension IDs differ across profiles, survive worker restarts, and override content-script IDs', async () => {
   const disk = {}, a = worker(disk, 'Chrome/120 Edg/120'), b = worker();
-  await Promise.all([a.send({ ...sample, browserId: chrome }), a.send(sample), b.send(sample)]);
+  await Promise.all([a.send({ ...sample, browserId: chrome, extensionVersion: '99.0' }), a.send(sample), b.send(sample)]);
   assert.equal(a.writes(), 1);
   assert.equal(a.sent[0].browserId, a.sent[1].browserId);
   assert.notEqual(a.sent[0].browserId, b.sent[0].browserId);
   assert.equal(a.sent[0].browser, 'edge');
+  assert.equal(a.sent[0].extensionVersion, '1.3.0');
   assert.equal(b.sent[0].browser, 'chrome');
   const restarted = worker(disk, 'Chrome/120 Edg/120');
   await restarted.send(sample);
@@ -115,8 +116,10 @@ test('extension IDs differ across profiles, survive worker restarts, and overrid
   await restarted.handlers.removed(7);
   await restarted.handlers.updated(7, { status: 'loading' });
   await restarted.handlers.startup();
-  assert.equal(restarted.sent.length, 4);
-  for (const message of restarted.sent.slice(1)) {
+  assert.equal(restarted.sent.length, 5);
+  assert.equal(restarted.sent[3].tabId, undefined);
+  assert.equal(restarted.sent[3].extensionVersion, '1.3.0');
+  for (const message of restarted.sent.slice(1).filter(message => message.tabId !== undefined)) {
     assert.equal(message.closed, true);
     assert.equal(message.browserId, disk.browserId);
   }

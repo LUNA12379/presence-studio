@@ -1,5 +1,6 @@
 importScripts('connection.js');
 const BASE = 'http://127.0.0.1:49832';
+const EXTENSION_VERSION = chrome.runtime.getManifest().version;
 const SITES = ['https://www.youtube.com/*', 'https://music.youtube.com/*', 'https://soundcloud.com/*', 'https://www.soundcloud.com/*'];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const browser = /Edg\//.test(navigator.userAgent) ? 'edge' : /Chrome\//.test(navigator.userAgent) ? 'chrome' : '';
@@ -23,10 +24,10 @@ function sourceFor(url) {
     return { 'www.youtube.com': 'youtube', 'music.youtube.com': 'music', 'soundcloud.com': 'soundcloud', 'www.soundcloud.com': 'soundcloud' }[parsed.hostname] || '';
   } catch { return ''; }
 }
-async function relay(session) {
+async function send(endpoint, payload) {
   try {
-    session = { ...session, browserId: await browserIdentity(), browser };
-    const response = await fetch(`${BASE}/api/session`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Bridge-Token': BRIDGE_TOKEN }, body: JSON.stringify(session), signal: AbortSignal.timeout(4000) });
+    payload = { ...payload, browserId: await browserIdentity(), browser, extensionVersion: EXTENSION_VERSION };
+    const response = await fetch(`${BASE}/api/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Bridge-Token': BRIDGE_TOKEN }, body: JSON.stringify(payload), signal: AbortSignal.timeout(4000) });
     if (!response.ok) throw new Error('Bridge unavailable');
     await chrome.action.setBadgeText({ text: '' });
   } catch {
@@ -34,6 +35,7 @@ async function relay(session) {
     await chrome.action.setBadgeText({ text: '!' });
   }
 }
+function relay(session) { return send('session', session); }
 chrome.runtime.onMessage.addListener((message, sender, reply) => {
   const source = sourceFor(sender.url);
   if (!['youtube-presence', 'media-presence'].includes(message?.kind) || sender.tab?.id == null || !source || sender.frameId !== 0 || !message.session || (message.session.closed !== true && message.session.source !== source)) return;
@@ -45,6 +47,8 @@ chrome.tabs.onUpdated.addListener((tabId, change) => {
   if (change.status === 'loading' || (change.url && !sourceFor(change.url))) return relay({ tabId, closed: true });
 });
 async function refresh() {
+  // Report the loaded extension even when no supported media tab is open.
+  await send('extension', {});
   const tabs = await chrome.tabs.query({ url: SITES });
   await Promise.all(tabs.map(tab => chrome.tabs.sendMessage(tab.id, { kind: 'refresh-presence' }).catch(() => relay({ tabId: tab.id, closed: true }))));
 }

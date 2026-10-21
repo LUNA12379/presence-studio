@@ -150,7 +150,9 @@ function render(data) {
   $('connectionError').textContent=t(data.error||'');$('extensionPath').textContent=data.extensionPath;$('obsUrl').value=data.overlayUrl;
   const previewUrl=data.overlayUrl.replace('/overlay#','/overlay?preview=1#');if($('overlayPreview').getAttribute('src')!==previewUrl)$('overlayPreview').src=previewUrl;fitOverlay();
   $('hotkeyStatus').textContent=!data.desktopConnected?t('단축키는 데스크톱 앱 실행 중에 사용할 수 있어요.'):(!data.nativeInfo.hotkeyRegistered||!data.nativeInfo.overlayHotkeyRegistered)?t('다른 앱이 일부 단축키를 사용 중이에요. 트레이 메뉴를 이용해 주세요.'):t('두 단축키가 모두 등록되어 있어요.');
-  renderSessions(data);renderPresets(data);renderUpdates(data.update);
+  renderSessions(data);renderPresets(data);renderUpdates(data.update);renderExtensionVersions(data.extension);
+  if(data.extension?.needsAttention){$('edgeState').textContent=t('업데이트 필요');$('edgeState').classList.remove('green');$('extensionStatus').textContent=t('브라우저 확장 버전을 확인해 주세요.');}
+  $('edgeState').classList.toggle('version-warning',!!data.extension?.needsAttention);
   if(firstLoad&&data.config.showGuideOnStartup)showGuide();
   if(firstLoad)checkUpdatesAtStartup(data);
 }
@@ -187,4 +189,4 @@ const starters=[{name:t('집중 모드'),symbol:'⌘',title:t('작업에 집중�
 for(const s of starters)$('starterPresets').append(presetCard({name:s.name,symbol:s.symbol,manual:{title:s.title,state:s.state,type:'playing',imageUrl:'',buttonLabel:'',buttonUrl:'',timer:s.timer,minutes:s.minutes}},true));
 }
 async function refresh(){if(stopping)return;try{render(await api('status'));}catch{$('offline').hidden=false;}}
-localeReady.then(()=>{initMedia();initGuide();initUpdates();initLanguage();renderStarters();window.addEventListener('resize',fitOverlay);refresh();setInterval(refresh,1500);}).catch(error=>{ $('offline').hidden=false; $('offline').textContent=error.message; });
+localeReady.then(()=>{initMedia();initGuide();initUpdates();initExtensionVersions();initLanguage();renderStarters();window.addEventListener('resize',fitOverlay);refresh();setInterval(refresh,1500);}).catch(error=>{ $('offline').hidden=false; $('offline').textContent=error.message; });

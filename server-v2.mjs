@@ -12,11 +12,13 @@ import { resolveActivity } from './lib/activity.mjs';
 import { userDataDirectory, loadUserSettings, saveSettings } from './lib/storage.mjs';
 import { ImageLibrary, MAX_IMAGE_BYTES, effectiveApplicationId, fetchDiscordAssets } from './lib/images.mjs';
 import { UpdateManager } from './lib/updates.mjs';
+import { ExtensionRegistry, parseExtensionReport } from './lib/extensions.mjs';
 export { DEFAULTS, validateConfig } from './lib/settings.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-const VERSION = '2.8.0';
+const VERSION = '2.8.1';
+const EXTENSION_VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'extension', 'manifest.json'), 'utf8')).version;
 export function loadSettings(root = ROOT, dataDir = userDataDirectory()) { return loadUserSettings(root, dataDir); }
 function secretMatches(value, expected) {
   if (typeof value !== 'string' || typeof expected !== 'string') return false;
@@ -41,9 +43,10 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
   let repository='';try{repository=JSON.parse(fs.readFileSync(path.join(root,'update-channel.json'),'utf8')).repository||'';}catch{}
   const updates=updater||new UpdateManager({version:VERSION,repository,directory:path.join(dataDir,'updates'),root});
   const sessions = new SessionStore();
+  const extensions = new ExtensionRegistry(EXTENSION_VERSION);
   let activeConfig = validateConfig({}, config);
   let rpcApplicationId = rpc.ready ? effectiveApplicationId(activeConfig) : '', connectionRevision = 0;
-  let lastExtensionAt = 0, lastAck, lastSentAt = 0, lastAttempt = 0, lastConnect = 0;
+  let lastAck, lastSentAt = 0, lastAttempt = 0, lastConnect = 0;
   let connectionError = '', connecting = false, sending = false, shuttingDown = false;
   let manualStartedAt = clock(), desktopLastAt = 0, nativeInfo = {}, configRevision = 0;
   let timer, configQueue = Promise.resolve();
@@ -96,8 +99,9 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
     publicConfig.autostart = autostartExists(publicConfig.autostart);
     const { current, display } = resolved();
     const applicationId = effectiveApplicationId(activeConfig, current?.source), connected = rpc.ready && rpcApplicationId === applicationId;
+    const extension = extensions.status(clock());
     return { version: VERSION, update:updates.status(), config: publicConfig, connected, connecting, error: connectionError,
-      extensionConnected: lastExtensionAt > 0 && clock() - lastExtensionAt < 95000,
+      extensionConnected: extension.clients.length > 0, extension,
       desktopConnected: desktopLastAt > 0 && clock() - desktopLastAt < 6000, nativeInfo,
       current, display, published: Boolean(connected && lastAck), lastSentAt, manualStartedAt,
       sessions: [...sessions.sessions.values()].map(s => ({ sessionId: s.sessionId, tabId: s.tabId, browser: s.browser, title: s.title, channel: s.channel, source: s.source, paused: s.paused })),
@@ -135,7 +139,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
     let pathname;
     try { pathname = new URL(req.url, origin).pathname; } catch { return respond(res, 400, { error: 'Invalid path' }); }
     if (extensionOrigin) {
-      if (pathname !== '/api/session') return respond(res, 403, { error: 'Extension endpoint only' });
+      if (!['/api/session', '/api/extension'].includes(pathname)) return respond(res, 403, { error: 'Extension endpoint only' });
       res.setHeader('Access-Control-Allow-Origin', requestOrigin); res.setHeader('Vary', 'Origin');
       if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'POST'); res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Bridge-Token');
@@ -185,7 +189,12 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
           return respond(res,200,{applicationId,assets:cached.assets});
         }
         if (req.method === 'POST' && pathname === '/api/session') {
-          sessions.update(await jsonBody(req), clock()); lastExtensionAt = clock(); return respond(res, 200, { ok: true });
+          const raw = await jsonBody(req), report = parseExtensionReport(raw);
+          sessions.update(raw, clock()); extensions.update(report, clock()); return respond(res, 200, { ok: true });
+        }
+        if (req.method === 'POST' && pathname === '/api/extension') {
+          extensions.update(parseExtensionReport(await jsonBody(req), true), clock());
+          return respond(res, 200, { ok: true, requiredVersion: EXTENSION_VERSION });
         }
         if (req.method === 'POST' && pathname === '/api/config') { await updateConfig(await jsonBody(req)); return respond(res, 200, status()); }
         if (req.method === 'POST' && pathname === '/api/timer/restart') { manualStartedAt = clock(); lastAttempt = 0; await tick(); return respond(res, 200, status()); }
@@ -232,7 +241,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       const html = fs.readFileSync(path.join(root, 'ui', 'index.html'), 'utf8').replace('__BRIDGE_TOKEN__', activeConfig.token).replace('__LANGUAGE__', activeConfig.language);
       return respond(res, 200, html, 'text/html; charset=utf-8');
     }
-    const assets = { '/en.json':['en.json','application/json'], '/i18n.js':['i18n.js','text/javascript'], '/updates.js':['updates.js','text/javascript'], '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/crop.js':['crop.js','text/javascript'], '/crop-math.js':['crop-math.js','text/javascript'], '/crop.css':['crop.css','text/css'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
+    const assets = { '/extensions.js':['extensions.js','text/javascript'], '/en.json':['en.json','application/json'], '/i18n.js':['i18n.js','text/javascript'], '/updates.js':['updates.js','text/javascript'], '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/crop.js':['crop.js','text/javascript'], '/crop-math.js':['crop-math.js','text/javascript'], '/crop.css':['crop.css','text/css'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
       '/overlay.js': ['overlay.js', 'text/javascript'], '/overlay.css': ['overlay.css', 'text/css'], '/icon.svg': ['icon.svg', 'image/svg+xml'] };
     if (assets[pathname]) {
       const [file, type] = assets[pathname]; return respond(res, 200, fs.readFileSync(path.join(root, 'ui', file)), `${type}; charset=utf-8`);
