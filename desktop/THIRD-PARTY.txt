@@ -4,7 +4,11 @@ Source: https://www.nuget.org/packages/Microsoft.Web.WebView2/1.0.3537.50
 License: WebView2-LICENSE.txt in this folder
 
 The desktop application uses the installed Microsoft Edge WebView2 Runtime.
-Node.js is used from the local installation; no npm dependencies are installed.
+The installer bundles Node.js 22.23.3 with its full notices in runtime/LICENSE.txt.
+Portable/source users supply Node.js themselves. No npm dependencies are installed.
+
+Project license: ../COPYING and ../LICENSE (GPLv3 with WebView2 permission).
+Component inventory and source links: ../THIRD-PARTY-NOTICES.md.
 
 Build: run Build.ps1 in this folder (Windows .NET Framework C# compiler).
 Source: Studio.cs and Studio.manifest.

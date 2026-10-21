@@ -2,7 +2,8 @@
   "name": "youtube-discord-local",
   "version": "2.7.2",
   "private": true,
+  "license": "SEE LICENSE IN COPYING",
   "type": "module",
-  "scripts": { "start": "node server.mjs", "test": "node --test test/*.test.mjs" },
+  "scripts": { "start": "node server.mjs", "test": "node --test test/*.test.mjs", "audit:source": "node scripts/check-source.mjs" },
   "engines": { "node": ">=20.3" }
 }

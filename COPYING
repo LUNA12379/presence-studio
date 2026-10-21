@@ -1,0 +1,40 @@
+Presence Studio
+Copyright (C) 2026 LUNA12379 and Presence Studio contributors
+
+Except for third-party components identified in THIRD-PARTY-NOTICES.md,
+Presence Studio's original source, browser extension, desktop shell,
+installer, documentation and artwork are licensed under the GNU General
+Public License, version 3 only (GPL-3.0-only), with the additional permission
+below. The complete, unmodified GPL version 3 is in LICENSE.
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See LICENSE for
+the full terms.
+
+Additional permission under GNU GPL version 3 section 7:
+
+If you modify this Program, or any covered work, by linking or combining it
+with Microsoft WebView2 SDK components and/or the Microsoft Edge WebView2
+Runtime, the copyright holders of this Program grant you additional
+permission to convey the resulting work. This permission covers only that
+combination. It does not change Microsoft's license terms and does not
+waive GPL requirements for Presence Studio or other covered modifications.
+The Corresponding Source for the combination need not include those
+Microsoft WebView2 components. Preserve their required notices and comply
+with their applicable redistribution terms.
+
+This permission does not apply to unrelated proprietary libraries. You may
+remove it from your version as permitted by GPL section 7, but must then
+ensure that your distribution complies with the GPL without the permission.
+
+Source repository: https://github.com/LUNA12379/presence-studio
+Source and build instructions: DEVELOPMENT.md and RELEASING.md in that repository.
+Each GPL binary release must provide its matching source archive, identified
+in the release manifest, alongside the installer. Historical installers
+published before this licensing change are not retroactively relabeled by
+this notice. Trademarks and user-supplied images are not licensed by it.

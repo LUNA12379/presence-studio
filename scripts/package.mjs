@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const files = [
   'server.mjs', 'server-v2.mjs', 'package.json', 'config.example.json', 'update-channel.json', 'ui/en.json', 'README.md', 'README.ko.md', '사용방법.txt',
+  'LICENSE', 'COPYING', 'THIRD-PARTY-NOTICES.md',
+  'DEVELOPMENT.md', 'CONTRIBUTING.md', 'SECURITY.md', 'RELEASING.md',
   'Start.cmd', 'Start.ps1', 'Autostart.ps1', 'Enable-Autostart.cmd', 'Disable-Autostart.cmd',
   'extension/manifest.json', 'extension/background.js', 'extension/content.js', 'extension/connection.example.js',
   'extension/soundcloud-reader.js', 'extension/soundcloud.js',

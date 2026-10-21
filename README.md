@@ -6,9 +6,17 @@ Show what you're watching, listening to or working on with Discord Rich Presence
 
 **Windows 10/11 x64 · Edge / Chrome · YouTube · YouTube Music · SoundCloud · English / 한국어**
 
-This is the public distribution guide. The application source repository remains private. The [public distribution repository](https://github.com/LUNA12379/presence-studio-releases) is for documentation and release downloads.
+This is the source and development repository. Windows installers and the update channel live in the separate [distribution repository](https://github.com/LUNA12379/presence-studio-releases).
 
-**[Download the latest Windows installer](https://github.com/LUNA12379/presence-studio-releases/releases/latest)** · Open the release and choose `Presence-Studio-<version>-Setup.exe` under **Assets**. The GitHub-generated “Source code” archives contain this distribution guide, not the app.
+**[Download the latest Windows installer](https://github.com/LUNA12379/presence-studio-releases/releases/latest)** · Open the release and choose `Presence-Studio-<version>-Setup.exe` under **Assets**. The distribution repository's GitHub-generated “Source code” archives contain its guide. GPL releases must additionally provide the explicitly named `Presence-Studio-<version>-source.zip` built from the matching application commit; existing releases predating the GPL transition do not contain that asset.
+
+## Develop and contribute
+
+Read [DEVELOPMENT.md](DEVELOPMENT.md) for Windows prerequisites, isolated local development, tests and builds; [CONTRIBUTING.md](CONTRIBUTING.md) for changes; [SECURITY.md](SECURITY.md) for private reporting and the local trust boundary; and [RELEASING.md](RELEASING.md) for matching installer/source releases. `Build-Release.ps1` only prepares local files and never publishes them.
+
+## License
+
+Original project code, including the extension and installer, is **GPLv3 only with a narrow WebView2 linking/distribution permission**. See [COPYING](COPYING) for the copyright notice, additional permission and warranty disclaimer, [LICENSE](LICENSE) for the full GPL, and [third-party notices](THIRD-PARTY-NOTICES.md) for dependencies. Distribution of covered modified versions must satisfy the GPL's source and notice requirements; commercial use is allowed. `private: true` in `package.json` prevents accidental npm publication and does not determine GitHub visibility.
 
 ## Features
 
@@ -81,6 +89,6 @@ The extension sends current playback information to a local service on your PC. 
 
 Reopen the guide from **Connections & settings → Open guide**. If the image list is empty, check that your ID matches the application where you uploaded the image, save the upload in the Developer Portal, then refresh the list.
 
-Report problems through [Issues](https://github.com/LUNA12379/presence-studio-releases/issues), including the app version and steps to reproduce. Do not attach `config.json`, the generated `connection.js`, private overlay URLs or personal screenshots without reviewing them first.
+Report ordinary problems through [source Issues](https://github.com/LUNA12379/presence-studio/issues), including the app version and steps to reproduce. If the source repository is not yet accessible, use [distribution Issues](https://github.com/LUNA12379/presence-studio-releases/issues). Follow [SECURITY.md](SECURITY.md) for security issues. Do not attach `config.json`, the generated `connection.js`, private overlay URLs or personal screenshots without reviewing them first.
 
 Presence Studio is an independent project, not affiliated with Discord, Google, YouTube, SoundCloud or Microsoft.

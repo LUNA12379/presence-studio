@@ -6,9 +6,17 @@
 
 **Windows 10/11 x64 · Edge / Chrome · YouTube · YouTube Music · SoundCloud · English / 한국어**
 
-공개 배포용 안내입니다. 소스 저장소는 비공개로 유지하며, [공개 배포 저장소](https://github.com/LUNA12379/presence-studio-releases)에는 설명서와 배포 파일을 올립니다.
+이곳은 소스·개발 저장소입니다. 설치 파일과 자동 업데이트 채널은 별도의 [배포 저장소](https://github.com/LUNA12379/presence-studio-releases)에서 관리합니다.
 
-**[최신 Windows 설치 파일 다운로드](https://github.com/LUNA12379/presence-studio-releases/releases/latest)** · 배포 페이지의 **Assets**에서 `Presence-Studio-<버전>-Setup.exe`를 선택하세요. GitHub가 자동으로 표시하는 “Source code” 압축 파일은 이 배포 안내 문서이며 앱 설치 파일이 아닙니다.
+**[최신 Windows 설치 파일 다운로드](https://github.com/LUNA12379/presence-studio-releases/releases/latest)** · 배포 페이지의 **Assets**에서 `Presence-Studio-<버전>-Setup.exe`를 선택하세요. 배포 저장소에서 자동 생성되는 “Source code” 파일은 배포 안내 문서입니다. GPL 전환 후 릴리스에는 설치 파일과 같은 커밋으로 만든 `Presence-Studio-<버전>-source.zip`을 별도로 제공해야 합니다. 전환 전에 게시한 기존 릴리스에는 이 소스 파일이 없습니다.
+
+## 개발과 기여
+
+[개발·빌드 안내](DEVELOPMENT.md), [기여 안내](CONTRIBUTING.md), [보안·개인정보 안내](SECURITY.md), [배포 절차](RELEASING.md)를 참고하세요. `Build-Release.ps1`은 같은 커밋의 소스 ZIP과 설치 파일을 로컬에 준비하며, GitHub 공개 전환이나 게시를 실행하지 않습니다.
+
+## 라이선스
+
+앱·확장·설치 프로그램의 자체 코드는 **GPLv3 전용 + WebView2 연결·배포에 한정된 예외**를 적용합니다. [COPYING](COPYING)에 저작권·예외·무보증 고지, [LICENSE](LICENSE)에 GPL 전문, [외부 구성요소 안내](THIRD-PARTY-NOTICES.md)에 각 라이선스가 있습니다. 상업적 사용도 가능하며, GPL 적용 수정본을 배포할 때는 소스 제공과 고지 등 GPL 조건을 따라야 합니다. `package.json`의 `private: true`는 실수로 npm에 게시하는 것을 막는 설정이며 GitHub 공개 여부와는 별개입니다.
 
 ## 주요 기능
 
@@ -81,6 +89,6 @@ Application ID·프리셋·사진·언어 설정은 `%APPDATA%\PresenceStudio`�
 
 **연결 & 설정 → 설명서 보기**에서 설명서를 다시 열 수 있습니다. 이미지 목록이 비었다면 앱에 저장한 ID와 사진을 올린 애플리케이션이 같은지 확인하고, 개발자 페이지에서 저장한 뒤 새로고침하세요.
 
-문제는 [Issues](https://github.com/LUNA12379/presence-studio-releases/issues)에 앱 버전과 재현 순서를 적어 주세요. `config.json`, 생성된 `connection.js`, 개인 오버레이 주소나 개인정보가 담긴 화면은 그대로 첨부하지 마세요.
+일반 문제는 [소스 Issues](https://github.com/LUNA12379/presence-studio/issues)에 앱 버전과 재현 순서를 적어 주세요. 아직 소스 저장소에 접근할 수 없다면 [배포 Issues](https://github.com/LUNA12379/presence-studio-releases/issues)를 이용하세요. 보안 문제는 [SECURITY.md](SECURITY.md)의 비공개 신고 안내를 따라 주세요. `config.json`, 생성된 `connection.js`, 개인 오버레이 주소나 개인정보가 담긴 화면은 그대로 첨부하지 마세요.
 
 Presence Studio는 Discord·Google·YouTube·SoundCloud·Microsoft와 제휴하지 않은 독립 프로젝트입니다.

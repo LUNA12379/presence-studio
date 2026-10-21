@@ -18,6 +18,7 @@ New-Item -ItemType Directory -Path $runtimeFolder | Out-Null
 Copy-Item -LiteralPath $runtime -Destination (Join-Path $runtimeFolder 'node.exe')
 $license = Join-Path $cache 'node-v22.23.3-LICENSE.txt'
 if (!(Test-Path -LiteralPath $license)) { Invoke-WebRequest 'https://raw.githubusercontent.com/nodejs/node/v22.23.3/LICENSE' -OutFile $license }
+if ((Get-FileHash -LiteralPath $license -Algorithm SHA256).Hash -ne 'C738AE413CF561F174E34F6961F8CA458AAE2369A73640DDA6234C629B98BCC4') { throw 'Bundled Node.js license checksum does not match its pinned release.' }
 Copy-Item -LiteralPath $license -Destination (Join-Path $runtimeFolder 'LICENSE.txt')
 $webview = Join-Path $cache 'MicrosoftEdgeWebview2Setup.exe'
 if (!(Test-Path -LiteralPath $webview)) { Invoke-WebRequest 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile $webview }
