@@ -16,8 +16,9 @@ change or publish anything automatically.
 2. Review COPYING, LICENSE and THIRD-PARTY-NOTICES.md. GPLv3 applies from the
    licensing commit forward. Do not silently relabel old installers or claim
    that an earlier binary was built from the new GPL source.
-3. Enable private vulnerability reporting before making the source public.
-   The owner explicitly decides when to change visibility. Update the public
+3. The owner explicitly decides when to change visibility. As part of that public
+   launch, enable private vulnerability reporting before announcing it (GitHub
+   provides that setting for public repositories). Update the public
    distribution README in both languages to link to the source repository and
    explain the explicitly attached source archive.
 

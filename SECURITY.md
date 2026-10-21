@@ -6,7 +6,9 @@ Use GitHub's **Security → Report a vulnerability** on the source repository
 when private vulnerability reporting is enabled. If that option is unavailable,
 open an issue saying only that you need a private reporting channel. Do not post
 the vulnerability, exploit, credentials, config or private activity data there.
-The maintainer must enable private reporting before making the source public.
+The maintainer should enable private reporting during the public launch, before
+announcing it. GitHub provides this setting for public repositories; see its
+[configuration guide](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
 There is no promised response time or bug bounty. Fixes target the latest stable
 version; older releases do not have a separate backport commitment.
 
