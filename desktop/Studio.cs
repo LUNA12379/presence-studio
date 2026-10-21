@@ -79,7 +79,7 @@ sealed class StudioForm : Form {
         timer.Tick += async delegate { if (Program.ShowEvent != null && Program.ShowEvent.WaitOne(0)) ShowStudio(); await Poll(); };
     }
     async Task EnsureServer() {
-        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.8.1")) return;
+        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.8.2")) return;
             // Upgrade only this application's v1 bridge, preserving its pairing key.
             if (health.Contains("youtube-discord-local")) {
                 var old = Data.Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Program.SettingsFile));
@@ -93,7 +93,7 @@ sealed class StudioForm : Form {
         string bundledNode = Path.Combine(Program.Root, "runtime", "node.exe");
         var info = new ProcessStartInfo(File.Exists(bundledNode) ? bundledNode : "node.exe", "\"" + Path.Combine(Program.Root, "server.mjs") + "\"") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, WorkingDirectory = Program.Root };
         Process.Start(info);
-        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.8.1")) return; } catch {} }
+        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.8.2")) return; } catch {} }
         throw new Exception(Locale.T("연결 프로그램을 시작하지 못했습니다. Node.js가 설치되어 있는지 확인하세요."));
     }
     async Task Initialize() {
@@ -105,6 +105,20 @@ sealed class StudioForm : Form {
             token = Data.Str(config, "token"); Locale.Language = Data.Str(config, "language", "ko");
             var environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(Path.GetTempPath(), "PresenceStudioWebView", Program.InstanceKey));
             await view.EnsureCoreWebView2Async(environment);
+            if (verifyPath != null && Environment.GetEnvironmentVariable("PRESENCE_STUDIO_VERIFY_MUTATIONS") == "1" && !String.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("PRESENCE_STUDIO_DATA_DIR"))) {
+                // Deterministic images for the isolated verifier's two synthetic Discord assets.
+                string fixtureBase = "https://cdn.discordapp.com/app-assets/123456789012345678/";
+                foreach (string asset in new[] { "234567890123456789", "234567890123456790" }) view.CoreWebView2.AddWebResourceRequestedFilter(fixtureBase + asset + ".png", CoreWebView2WebResourceContext.Image);
+                view.CoreWebView2.WebResourceRequested += delegate(object sender, CoreWebView2WebResourceRequestedEventArgs e) {
+                    bool second = e.Request.Uri == fixtureBase + "234567890123456790.png";
+                    if (!second && e.Request.Uri != fixtureBase + "234567890123456789.png") return;
+                    var imageBytes = new MemoryStream();
+                    using (var bitmap = new Bitmap(96,96)) using (var graphics = Graphics.FromImage(bitmap)) using (var font = new Font("Segoe UI",24,FontStyle.Bold)) {
+                        graphics.Clear(second ? Color.DarkOrange : Color.CornflowerBlue); graphics.DrawString(second ? "D2" : "D1",font,Brushes.White,14,26); bitmap.Save(imageBytes,ImageFormat.Png);
+                    }
+                    imageBytes.Position=0;e.Response=environment.CreateWebResourceResponse(imageBytes,200,"OK","Content-Type: image/png\r\nCache-Control: no-store");
+                };
+            }
             view.CoreWebView2.Settings.AreDefaultContextMenusEnabled = false;
             view.CoreWebView2.Settings.IsStatusBarEnabled = false;
             view.CoreWebView2.Settings.AreDevToolsEnabled = false;
@@ -238,6 +252,19 @@ sealed class StudioForm : Form {
             overlay.UpdateState(Data.Obj(Data.Get(imageState, "display")), imageStyle, true); await Task.Delay(900);
             localImageVerified = overlay.HasImage; if (!localImageVerified) throw new Exception("Native overlay did not load the saved image");
             using (var bitmap = new Bitmap(overlay.Width, overlay.Height)) { overlay.DrawToBitmap(bitmap, new Rectangle(Point.Empty, overlay.Size)); bitmap.Save(Path.Combine(verifyPath, "local-image-overlay.png"), ImageFormat.Png); }
+            await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(Path.Combine(Program.Root,"test","ui-preview-workflow.js")));
+            bool previewFinished=false;
+            for(int i=0;i<160;i++) {
+                await Task.Delay(150);
+                string capture=Data.Json.Deserialize<string>(await view.CoreWebView2.ExecuteScriptAsync("window.studioPreviewCapture || null"));
+                if(capture=="preset-preview-discord-ko"||capture=="preset-preview-discord-en"||capture=="preset-preview-local-ko") {
+                    using(var stream=File.Create(Path.Combine(verifyPath,capture+".png")))await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
+                    await view.CoreWebView2.ExecuteScriptAsync("window.studioPreviewCapture=null");
+                }
+                if(await view.CoreWebView2.ExecuteScriptAsync("window.studioPreviewVerification && window.studioPreviewVerification.done")=="true"){previewFinished=true;break;}
+            }
+            if(!previewFinished||await view.CoreWebView2.ExecuteScriptAsync("!!window.studioPreviewVerification.error")=="true")throw new Exception(await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioPreviewVerification)"));
+            File.WriteAllText(Path.Combine(verifyPath,"preview.json"),await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioPreviewVerification)"));
             await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(Path.Combine(Program.Root, "test", "ui-updates-workflow.js")));
             bool updateFinished=false;
             for(int i=0;i<100;i++){await Task.Delay(150);if(await view.CoreWebView2.ExecuteScriptAsync("window.studioUpdateVerification && window.studioUpdateVerification.done") == "true"){updateFinished=true;break;}}

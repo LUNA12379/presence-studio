@@ -40,10 +40,12 @@
     assert(smaller.width===512&&smaller.height===512,'512 output size was ignored');smaller.close();
     $('localImage').value=imageId;$('localImage').dispatchEvent(new Event('change',{bubbles:true}));
     $('refreshDiscordImages').click();await wait(()=>!$('refreshDiscordImages').disabled);
-    assert($('discordImage').options.length===2,'Refresh did not replace the cached empty list');
+    assert($('discordImage').options.length===3,'Refresh did not replace the cached empty list');
     const discordId=$('discordImage').options[1].value;
     $('discordImage').value=discordId;$('discordImage').dispatchEvent(new Event('change',{bubbles:true}));
     assert($('localImage').value===imageId,'Choosing a Discord image changed the local image');
+    assert($('previewDiscord').getAttribute('aria-pressed')==='true','Choosing a Discord image did not show its preview');
+    $('previewLocal').click();
     assert($('manualPreviewImage').getAttribute('src')===imageCatalog.find(item=>item.id===imageId).url,'Local preview must retain its own image');
     $('manualTitle').value='이미지와 함께 집중';$('manualTitle').dispatchEvent(new Event('input',{bubbles:true}));$('manualForm').requestSubmit();
     await wait(()=>latest.config.manual.imageId===imageId&&latest.config.manual.discordAssetId===discordId);

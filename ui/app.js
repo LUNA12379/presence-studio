@@ -46,7 +46,11 @@ function previewManual() {
   $('manualPreviewType').textContent = { playing:t('플레이 중'),listening:t('듣는 중'),watching:t('시청 중') }[m.type];
   $('manualPreviewTimer').textContent = m.timer === 'none' ? '' : m.timer === 'countdown' ? t('{minutes}분 남음', {minutes:m.minutes || 25}) : t('00:00 경과');
   $('minutesRow').hidden = m.timer !== 'countdown'; $('manualPreviewButton').hidden = !m.buttonUrl; $('manualPreviewButton').textContent = m.buttonLabel || t('열기');
-  const imageUrl=manualImageUrl(m),validImage=!!imageUrl&&$('manualPreviewImage').dataset.failed!==imageUrl; $('manualPreviewIcon').hidden = validImage; $('manualPreviewImage').hidden = !validImage;
+  const discordPreview=manualPreviewTarget==='discord';
+  $('previewLocal').setAttribute('aria-pressed',String(!discordPreview));$('previewDiscord').setAttribute('aria-pressed',String(discordPreview));
+  $('manualPreviewHint').textContent=discordPreview?t('Discord 활동 카드의 이미지예요. 적용하려면 ‘이 활동으로 표시하기’를 누르세요.'):t('앱·데스크톱·OBS에 표시할 이미지예요. 두 미리보기는 서로 다른 사진을 사용할 수 있어요.');
+  const imageUrl=manualImageUrl(m,manualPreviewTarget),validImage=!!imageUrl&&$('manualPreviewImage').dataset.failed!==imageUrl; $('manualPreviewIcon').hidden = validImage; $('manualPreviewImage').hidden = !validImage;
+  if(!imageUrl){$('manualPreviewImage').removeAttribute('src');if(discordPreview)$('manualPreviewHint').textContent=t('기본 앱 이미지는 Discord에서 확인할 수 있어요. 적용하려면 ‘이 활동으로 표시하기’를 누르세요.');}
   if (validImage && $('manualPreviewImage').getAttribute('src') !== imageUrl) $('manualPreviewImage').src = imageUrl;
 }
 $('manualPreviewImage').addEventListener('error', () => { $('manualPreviewImage').dataset.failed = $('manualPreviewImage').getAttribute('src'); $('manualPreviewImage').hidden = true; $('manualPreviewIcon').hidden = false; });

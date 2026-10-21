@@ -1,0 +1,57 @@
+// Invoked by the native verifier with synthetic assets and a separate profile.
+(async()=>{
+  window.studioPreviewVerification={done:false};
+  const assert=(value,message)=>{if(!value)throw Error(message);};
+  const wait=async predicate=>{for(let i=0;i<80;i++){if(predicate())return;await new Promise(resolve=>setTimeout(resolve,100));}throw Error('Image preview UI timed out');};
+  const change=(id,value)=>{$(id).value=value;$(id).dispatchEvent(new Event('change',{bubbles:true}));};
+  const capture=async name=>{window.studioPreviewCapture=name;await wait(()=>!window.studioPreviewCapture);};
+  const loaded=()=>!$('manualPreviewImage').hidden&&$('manualPreviewImage').complete&&$('manualPreviewImage').naturalWidth>0;
+  const switchTo=async language=>{document.querySelector(`.topbar [data-language="${language}"]`).click();await wait(()=>!languageBusy&&latest.config.language===language);};
+  try{
+    const original=JSON.parse(JSON.stringify(latest.config));
+    const preset=original.presets.find(p=>p.manual.imageId&&p.manual.discordAssetId);
+    assert(!!preset,'Image preset fixture is missing');
+    panel('custom');await wait(()=>!$('refreshDiscordImages').disabled);
+    change('savedPreset',preset.id);
+    const local=preset.manual.imageId,otherLocal=imageCatalog.find(image=>image.id!==local);
+    const otherDiscord=discordAssets.find(asset=>asset.id!==preset.manual.discordAssetId);
+    assert(!!otherLocal&&!!otherDiscord,'Alternate image fixtures are missing');
+    change('discordImage',otherDiscord.id);
+    const discordUrl=`https://cdn.discordapp.com/app-assets/${otherDiscord.applicationId}/${otherDiscord.id}.png`;
+    assert($('previewDiscord').getAttribute('aria-pressed')==='true','Discord image change did not switch the preview');
+    assert($('manualPreviewImage').getAttribute('src')===discordUrl,'Loaded preset masked the new Discord image');
+    assert($('localImage').value===local,'Discord selection replaced the local image');
+    await wait(loaded);await refresh();
+    assert($('manualPreviewImage').getAttribute('src')===discordUrl,'Status polling reverted the image draft');
+    assert(JSON.stringify(latest.config.manual)===JSON.stringify(original.manual),'Preview change published an activity');
+    assert(JSON.stringify(latest.config.presets)===JSON.stringify(original.presets),'Preview change overwrote a preset');
+    $('previewDiscord').scrollIntoView({block:'center'});await capture('preset-preview-discord-ko');
+    await switchTo('en');
+    assert($('previewDiscord').textContent==='Discord activity'&&$('previewLocal').textContent==='App & overlay','Preview buttons were not translated');
+    assert($('manualPreviewHint').textContent.includes('Show this activity'),'Preview hint was not translated');
+    assert($('manualPreviewImage').getAttribute('src')===discordUrl,'Language switch discarded the image draft');
+    await capture('preset-preview-discord-en');await switchTo('ko');
+    const draft=JSON.stringify(getManual());
+    $('previewLocal').click();await wait(loaded);
+    assert($('manualPreviewImage').getAttribute('src')===imageCatalog.find(image=>image.id===local).url,'Switching preview did not restore the local photo');
+    assert(JSON.stringify(getManual())===draft,'Switching preview changed saved fields');
+    change('localImage',otherLocal.id);await wait(loaded);
+    assert($('previewLocal').getAttribute('aria-pressed')==='true'&&$('manualPreviewImage').getAttribute('src')===otherLocal.url,'Local image change did not update its preview');
+    assert($('discordImage').value===otherDiscord.id,'Local image change replaced the Discord selection');
+    await capture('preset-preview-local-ko');
+    change('discordImage','');
+    assert($('manualPreviewImage').hidden&&!$('manualPreviewIcon').hidden,'Default Discord image still shows the private local photo');
+    assert($('localImage').value===otherLocal.id,'Default Discord selection cleared the local image');
+    change('discordImage',otherDiscord.id);await wait(loaded);
+    $('updatePreset').click();await wait(()=>!presetBusy&&latest.config.presets.find(p=>p.id===preset.id).manual.discordAssetId===otherDiscord.id);
+    change('savedPreset',preset.id);
+    assert($('localImage').value===otherLocal.id&&$('discordImage').value===otherDiscord.id,'Reloading the overwritten preset lost image edits');
+    $('manualForm').requestSubmit();await wait(()=>latest.config.manual.discordAssetId===otherDiscord.id);
+    assert(latest.config.manual.imageId===otherLocal.id,'Applying the edited preset lost its local image');
+    assert(latest.display.image===otherLocal.url,'The overlay must still use its local photo');
+    await mutate('presets/save',{id:preset.id,name:preset.name,manual:preset.manual});
+    dirty.delete('manualForm');render(await mutate('config',{manual:original.manual,sourceMode:original.sourceMode}));
+    selectManualPreview('local');
+    window.studioPreviewVerification={done:true,loadedPresetImageUpdates:true,separateDestinations:true,pollingAndLanguageSafe:true,defaultImageSafe:true,previewDoesNotPublish:true,presetOverwriteAndApply:true};
+  }catch(error){window.studioPreviewVerification={done:true,error:error.stack||error.message};}
+})();

@@ -17,7 +17,7 @@ export { DEFAULTS, validateConfig } from './lib/settings.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-const VERSION = '2.8.1';
+const VERSION = '2.8.2';
 const EXTENSION_VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'extension', 'manifest.json'), 'utf8')).version;
 export function loadSettings(root = ROOT, dataDir = userDataDirectory()) { return loadUserSettings(root, dataDir); }
 function secretMatches(value, expected) {

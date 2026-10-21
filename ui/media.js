@@ -1,6 +1,10 @@
-let imageCatalog=[], discordAssets=[], assetsApplicationId='', imageSignature='', mediaBusy=false;
+let imageCatalog=[], discordAssets=[], assetsApplicationId='', imageSignature='', mediaBusy=false, manualPreviewTarget='local';
 function mediaFields(){const option=$('discordImage').selectedOptions[0];return{imageId:$('localImage').value,discordAssetId:$('discordImage').value,discordAssetAppId:option?.dataset.applicationId||''};}
-function manualImageUrl(m){return imageCatalog.find(item=>item.id===m.imageId)?.url||(m.discordAssetId&&m.discordAssetAppId?`https://cdn.discordapp.com/app-assets/${m.discordAssetAppId}/${m.discordAssetId}.png`:m.imageUrl);}
+function manualImageUrl(m,target='local'){
+  const discord=m.discordAssetId&&m.discordAssetAppId?`https://cdn.discordapp.com/app-assets/${m.discordAssetAppId}/${m.discordAssetId}.png`:m.imageUrl||'';
+  return target==='discord'?discord:imageCatalog.find(item=>item.id===m.imageId)?.url||discord;
+}
+function selectManualPreview(target){manualPreviewTarget=target;previewManual();}
 function imageOption(value,label,applicationId){const option=new Option(label,value);if(applicationId)option.dataset.applicationId=applicationId;return option;}
 function setMedia(m){
   $('localImage').value=m.imageId||'';
@@ -27,7 +31,7 @@ async function loadDiscordImages(force=false){
     if(result.applicationId!==(latest.config.customApplicationId||latest.config.applicationId)){$('discordImageStatus').textContent=t('ID가 바뀌었어요. 목록을 다시 새로고침하세요.');return;}
     const selected=mediaFields();assetsApplicationId=result.applicationId;discordAssets=result.assets;
     $('discordImage').replaceChildren(imageOption('',t('기본 앱 이미지')),...discordAssets.map(item=>imageOption(item.id,item.name,item.applicationId)));
-    setMedia({...selected});
+    setMedia({...selected});previewManual();
     $('discordImageStatus').textContent=result.assets.length?t('{count}개 이미지 · 선택한 뒤 활동이나 프리셋을 저장하세요.', {count:result.assets.length}):t('이 애플리케이션에서 이미지를 찾지 못했어요. 위 조회 대상과 등록한 앱이 같은지 확인하고, 개발자 페이지에서 저장을 마친 뒤 목록을 새로고침하세요.');
   }catch(e){$('discordImageStatus').textContent=t(e.message);}
   finally{$('refreshDiscordImages').disabled=false;}
@@ -35,7 +39,7 @@ async function loadDiscordImages(force=false){
 async function storeImage(blob,name){
   const response=await fetch('/api/images',{method:'POST',headers:{'X-Bridge-Token':token,'Content-Type':'image/png','X-Image-Name':encodeURIComponent(name.slice(0,120))},body:blob,signal:AbortSignal.timeout(15000)});
   const result=await response.json();if(!response.ok)throw new Error(result.error||t('이미지를 저장하지 못했어요.'));
-  dirty.add('manualForm');syncMedia({...latest,images:result.images});$('localImage').value=result.image.id;$('manualImage').value='';previewManual();
+  dirty.add('manualForm');syncMedia({...latest,images:result.images});$('localImage').value=result.image.id;$('manualImage').value='';selectManualPreview('local');
   $('imageStatus').textContent=t('{name} · 보관했어요. 활동·프리셋을 저장하거나 ‘PNG로 저장’으로 Discord에 올릴 파일을 꺼내세요.', {name:result.image.name});
 }
 async function importImage(file){
@@ -66,12 +70,13 @@ function exportLocalImage(){
   link.href=url.href;link.download='presence-image.png';document.body.append(link);link.click();link.remove();
 }
 function initMedia(){
+  $('previewLocal').onclick=()=>selectManualPreview('local');$('previewDiscord').onclick=()=>selectManualPreview('discord');
   $('pickImage').onclick=()=>$('imageFile').click();$('imageFile').onchange=()=>importImage($('imageFile').files[0]);
   for(const name of ['dragenter','dragover'])$('imageDrop').addEventListener(name,event=>{event.preventDefault();$('imageDrop').classList.add('dragging');});
   $('imageDrop').addEventListener('dragleave',()=>$('imageDrop').classList.remove('dragging'));
   $('imageDrop').addEventListener('drop',event=>{event.preventDefault();$('imageDrop').classList.remove('dragging');importImage(event.dataTransfer.files[0]);});
   for(const id of ['localImage','discordImage'])$(id).onchange=()=>{
-    dirty.add('manualForm');$('manualImage').value='';previewManual();updateImageActions();
+    dirty.add('manualForm');$('manualImage').value='';selectManualPreview(id==='localImage'?'local':'discord');updateImageActions();
     if(id==='localImage'){
       const selected=imageCatalog.find(item=>item.id===$('localImage').value);
       $('imageStatus').textContent=selected?t('{name} · 선택했어요. 활동·프리셋을 저장하면 이 선택을 기억합니다.', {name:selected.name}):t('로컬 이미지를 선택하지 않았어요.');
