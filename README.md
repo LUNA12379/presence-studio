@@ -2,13 +2,23 @@
 
 **English** · [한국어](README.ko.md)
 
+**[Download for Windows](https://github.com/LUNA12379/presence-studio-releases/releases/latest)** · **[Browse source code](https://github.com/LUNA12379/presence-studio)**
+
 Show what you're watching, listening to or working on with Discord Rich Presence, a desktop overlay and OBS.
 
 **Windows 10/11 x64 · Edge / Chrome · YouTube · YouTube Music · SoundCloud · English / 한국어**
 
-This is the source and development repository. Windows installers and the update channel live in the separate [distribution repository](https://github.com/LUNA12379/presence-studio-releases).
+This is the public source and development repository for the app and browser extension. Windows installers, the update channel and user guides live in the separate [distribution repository](https://github.com/LUNA12379/presence-studio-releases).
 
-**[Download the latest Windows installer](https://github.com/LUNA12379/presence-studio-releases/releases/latest)** · Open the release and choose `Presence-Studio-<version>-Setup.exe` under **Assets**. The distribution repository's GitHub-generated “Source code” archives contain its guide. GPL releases must additionally provide the explicitly named `Presence-Studio-<version>-source.zip` built from the matching application commit; existing releases predating the GPL transition do not contain that asset.
+## Downloads and source
+
+| What you need | Where to find it |
+| --- | --- |
+| Install or update the Windows app | [Latest release](https://github.com/LUNA12379/presence-studio-releases/releases/latest) → **Assets** → `Presence-Studio-<version>-Setup.exe` |
+| Read, change or build the app and extension | [Public source repository](https://github.com/LUNA12379/presence-studio) · [Build instructions](https://github.com/LUNA12379/presence-studio/blob/main/DEVELOPMENT.md) |
+| Source matching a particular installer | [All releases](https://github.com/LUNA12379/presence-studio-releases/releases) → select the version → **Assets** → `Presence-Studio-<version>-source.zip` (2.8.0 and later) |
+
+Releases from 2.8.0 onward include SHA-256 files and `release-manifest.json` linking the installer to its matching source. GitHub's automatic **Source code (zip / tar.gz)** downloads on the distribution repository contain its guides; choose the explicitly named `Presence-Studio-<version>-source.zip` for the application source.
 
 ## Develop and contribute
 
@@ -40,7 +50,7 @@ Microsoft Edge and Google Chrome are both supported. The extension is included w
 
 The installer is not code-signed yet. Windows may show an unknown-publisher warning. Use files from the project's release page.
 
-Edge and Chrome can run together, including multiple browser profiles. Version 2.8.0 separates their tab identities. After updating, reload extension **1.2.0** and media tabs in every browser; re-pin any previously pinned tab. The new `storage` permission stores a random profile ID locally; it is not synced or sent to Discord.
+Edge and Chrome can run together, including multiple browser profiles. Since 2.8.0, their tab identities are separate. After updating, reload the extension bundled with the app and media tabs in every browser. If upgrading from a version older than 2.8.0, re-pin any previously pinned tab. The `storage` permission stores a random profile ID locally; it is not synced or sent to Discord.
 
 ## SoundCloud playback
 
