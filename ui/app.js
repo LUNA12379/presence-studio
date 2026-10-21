@@ -64,18 +64,18 @@ function hydrate(data) {
   }
 }
 function renderSessions(data) {
-  const signature = JSON.stringify([uiLanguage,data.sessions,data.config.pinnedTabId]); if(signature === sessionsSignature) return; sessionsSignature=signature;
+  const signature = JSON.stringify([uiLanguage,data.sessions,data.config.pinnedSessionId]); if(signature === sessionsSignature) return; sessionsSignature=signature;
   $('sessions').replaceChildren(); $('emptySessions').hidden=!!data.sessions.length;
   for(const session of data.sessions) {
     const row=document.createElement('div'); row.className='session-row';
     const source={youtube:'YouTube',music:'YouTube Music',soundcloud:'SoundCloud'}[session.source]||'';
     const icon=document.createElement('span'); icon.className='session-icon';icon.textContent=session.source==='youtube'?'▶':'♫';
-    const info=document.createElement('div');info.className='session-info';const title=document.createElement('strong');title.textContent=session.title;const subtitle=document.createElement('small');subtitle.textContent=`${source}${session.channel?' · '+session.channel:''} · ${session.paused?t('일시정지'):t('재생 중')}`;info.append(title,subtitle);
-    const button=document.createElement('button');const pinned=data.config.pinnedTabId===session.tabId;button.textContent=pinned?t('고정 해제'):t('이 탭 고정');
-    button.addEventListener('click',async()=>{try{render(await mutate('config',{pinnedTabId:pinned?null:session.tabId}));notify(pinned?t('탭 고정을 해제했어요.'):t('이 탭의 활동만 표시해요.'));}catch(e){notify(t(e.message));}});row.append(icon,info,button);$('sessions').append(row);
+    const info=document.createElement('div');info.className='session-info';const title=document.createElement('strong');title.textContent=session.title;const subtitle=document.createElement('small');subtitle.textContent=`${source}${session.browser?' · '+({edge:'Edge',chrome:'Chrome'}[session.browser]||''):''}${session.channel?' · '+session.channel:''} · ${session.paused?t('일시정지'):t('재생 중')}`;info.append(title,subtitle);
+    const button=document.createElement('button');const pinned=data.config.pinnedSessionId===session.sessionId;button.textContent=pinned?t('고정 해제'):t('이 탭 고정');
+    button.addEventListener('click',async()=>{try{render(await mutate('config',{pinnedSessionId:pinned?null:session.sessionId}));notify(pinned?t('탭 고정을 해제했어요.'):t('이 탭의 활동만 표시해요.'));}catch(e){notify(t(e.message));}});row.append(icon,info,button);$('sessions').append(row);
   }
-  if(data.config.pinnedTabId!==null&&!data.sessions.some(s=>s.tabId===data.config.pinnedTabId)){
-    const row=document.createElement('div');row.className='session-row';const span=document.createElement('span');span.className='session-info small-muted';span.textContent=t('고정한 탭이 닫혔어요. 자동 선택으로 돌아갈 수 있습니다.');const button=document.createElement('button');button.textContent=t('고정 해제');button.onclick=async()=>{try{render(await mutate('config',{pinnedTabId:null}));}catch(e){notify(t(e.message));}};row.append(span,button);$('sessions').append(row);
+  if(data.config.pinnedSessionId!==null&&!data.sessions.some(s=>s.sessionId===data.config.pinnedSessionId)){
+    const row=document.createElement('div');row.className='session-row';const span=document.createElement('span');span.className='session-info small-muted';span.textContent=t(data.config.pinnedSessionId.startsWith('legacy:')?'확장 업데이트 후에는 원하는 탭을 다시 고정하세요.':'고정한 탭이 닫혔어요. 자동 선택으로 돌아갈 수 있습니다.');const button=document.createElement('button');button.textContent=t('고정 해제');button.onclick=async()=>{try{render(await mutate('config',{pinnedSessionId:null}));}catch(e){notify(t(e.message));}};row.append(span,button);$('sessions').append(row);
   }
 }
 function presetCard(p, starter=false) {

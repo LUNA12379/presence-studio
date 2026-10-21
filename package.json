@@ -1,6 +1,6 @@
 {
   "name": "youtube-discord-local",
-  "version": "2.7.2",
+  "version": "2.8.0",
   "private": true,
   "license": "SEE LICENSE IN COPYING",
   "type": "module",

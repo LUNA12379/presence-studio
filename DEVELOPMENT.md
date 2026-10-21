@@ -26,9 +26,12 @@ Open `http://127.0.0.1:49832/`. Start with blank IDs, then use a test applicatio
 if testing live Discord. Load the generated `edge-extension` folder inside the
 chosen data directory, not the repository's extension source. Never upload the
 generated folder: its `connection.js` is paired to your profile. The browser
-extension works in Edge or Chrome; use one browser profile at a time for
-predictable tab IDs. Concurrent browsers can reuse numeric tab IDs and are a
-known limitation pending separate session namespacing.
+extension works in Edge and Chrome concurrently. A random ID in extension-local
+storage namespaces tab IDs per browser profile and survives worker restarts. It
+is not synced and is not sent to Discord. Older extensions use a separate legacy
+namespace; reload the extension in every browser after upgrading to 2.8.0. Old
+numeric pins cannot identify a browser safely, so re-pin the desired tab after
+reloading. Pins never fall back to another browser with the same tab number.
 
 To build/run the native desktop instead:
 

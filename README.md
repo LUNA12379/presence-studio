@@ -40,6 +40,8 @@ Microsoft Edge and Google Chrome are both supported. The extension is included w
 
 The installer is not code-signed yet. Windows may show an unknown-publisher warning. Use files from the project's release page.
 
+Edge and Chrome can run together, including multiple browser profiles. Version 2.8.0 separates their tab identities. After updating, reload extension **1.2.0** and media tabs in every browser; re-pin any previously pinned tab. The new `storage` permission stores a random profile ID locally; it is not synced or sent to Discord.
+
 ## SoundCloud playback
 
 After updating the app, open `edge://extensions` or `chrome://extensions` and reload **Presence Studio — YouTube & SoundCloud** (formerly **YouTube → Discord 활동**). Allow access to SoundCloud if your browser asks, then reload your SoundCloud tabs and start a track.
@@ -89,6 +91,6 @@ The extension sends current playback information to a local service on your PC. 
 
 Reopen the guide from **Connections & settings → Open guide**. If the image list is empty, check that your ID matches the application where you uploaded the image, save the upload in the Developer Portal, then refresh the list.
 
-Report ordinary problems through [source Issues](https://github.com/LUNA12379/presence-studio/issues), including the app version and steps to reproduce. If the source repository is not yet accessible, use [distribution Issues](https://github.com/LUNA12379/presence-studio-releases/issues). Follow [SECURITY.md](SECURITY.md) for security issues. Do not attach `config.json`, the generated `connection.js`, private overlay URLs or personal screenshots without reviewing them first.
+Report ordinary problems through [source Issues](https://github.com/LUNA12379/presence-studio/issues), including the app version and steps to reproduce. Follow [SECURITY.md](SECURITY.md) for security issues. Do not attach `config.json`, the generated `connection.js`, private overlay URLs or personal screenshots without reviewing them first.
 
 Presence Studio is an independent project, not affiliated with Discord, Google, YouTube, SoundCloud or Microsoft.

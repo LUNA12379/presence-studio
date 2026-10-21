@@ -1,6 +1,21 @@
 importScripts('connection.js');
 const BASE = 'http://127.0.0.1:49832';
 const SITES = ['https://www.youtube.com/*', 'https://music.youtube.com/*', 'https://soundcloud.com/*', 'https://www.soundcloud.com/*'];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const browser = /Edg\//.test(navigator.userAgent) ? 'edge' : /Chrome\//.test(navigator.userAgent) ? 'chrome' : '';
+let identity;
+function browserIdentity() {
+  // Local extension storage separates browsers/profiles and survives worker restarts.
+  // Never sync this ID across browsers or fall back to a shared numeric tab ID.
+  if (!identity) identity = (async () => {
+    const saved = await chrome.storage.local.get('browserId');
+    if (typeof saved.browserId === 'string' && UUID.test(saved.browserId)) return saved.browserId;
+    const browserId = crypto.randomUUID();
+    await chrome.storage.local.set({ browserId });
+    return browserId;
+  })().catch(error => { identity = null; throw error; });
+  return identity;
+}
 function sourceFor(url) {
   try {
     const parsed = new URL(url);
@@ -10,6 +25,7 @@ function sourceFor(url) {
 }
 async function relay(session) {
   try {
+    session = { ...session, browserId: await browserIdentity(), browser };
     const response = await fetch(`${BASE}/api/session`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Bridge-Token': BRIDGE_TOKEN }, body: JSON.stringify(session), signal: AbortSignal.timeout(4000) });
     if (!response.ok) throw new Error('Bridge unavailable');
     await chrome.action.setBadgeText({ text: '' });
@@ -24,9 +40,9 @@ chrome.runtime.onMessage.addListener((message, sender, reply) => {
   relay({ ...message.session, tabId: sender.tab.id, active: sender.tab.active }).then(() => reply({ ok: true }));
   return true;
 });
-chrome.tabs.onRemoved.addListener(tabId => { relay({ tabId, closed: true }); });
+chrome.tabs.onRemoved.addListener(tabId => relay({ tabId, closed: true }));
 chrome.tabs.onUpdated.addListener((tabId, change) => {
-  if (change.status === 'loading' || (change.url && !sourceFor(change.url))) relay({ tabId, closed: true });
+  if (change.status === 'loading' || (change.url && !sourceFor(change.url))) return relay({ tabId, closed: true });
 });
 async function refresh() {
   const tabs = await chrome.tabs.query({ url: SITES });

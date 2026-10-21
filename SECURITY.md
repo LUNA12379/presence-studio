@@ -2,13 +2,10 @@
 
 ## Reporting
 
-Use GitHub's **Security → Report a vulnerability** on the source repository
-when private vulnerability reporting is enabled. If that option is unavailable,
+Use GitHub's **Security → Report a vulnerability** on the source repository:
+[submit a private report](https://github.com/LUNA12379/presence-studio/security/advisories/new). If that option is unavailable,
 open an issue saying only that you need a private reporting channel. Do not post
 the vulnerability, exploit, credentials, config or private activity data there.
-The maintainer should enable private reporting during the public launch, before
-announcing it. GitHub provides this setting for public repositories; see its
-[configuration guide](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
 There is no promised response time or bug bounty. Fixes target the latest stable
 version; older releases do not have a separate backport commitment.
 
@@ -20,7 +17,9 @@ version; older releases do not have a separate backport commitment.
 - The browser extension reads current media metadata on its declared YouTube,
   YouTube Music and SoundCloud origins. The selected activity is sent to the
   Discord desktop client over local IPC. Playback sessions stay in memory;
-  there is no watch-history database or project telemetry endpoint.
+  there is no watch-history database or project telemetry endpoint. A random
+  profile ID stays in extension-local storage and namespaces tabs on the local
+  bridge; it is not synced between browsers or included in Discord activities.
 - Configuration, Application IDs, presets, pairing/OBS keys and imported images
   are stored in `%APPDATA%\PresenceStudio` (or `PRESENCE_STUDIO_DATA_DIR`). Updates
   and uninstall preserve this directory. It is not an encrypted secret vault.

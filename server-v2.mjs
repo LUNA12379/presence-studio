@@ -16,7 +16,7 @@ export { DEFAULTS, validateConfig } from './lib/settings.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-const VERSION = '2.7.2';
+const VERSION = '2.8.0';
 export function loadSettings(root = ROOT, dataDir = userDataDirectory()) { return loadUserSettings(root, dataDir); }
 function secretMatches(value, expected) {
   if (typeof value !== 'string' || typeof expected !== 'string') return false;
@@ -100,7 +100,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       extensionConnected: lastExtensionAt > 0 && clock() - lastExtensionAt < 95000,
       desktopConnected: desktopLastAt > 0 && clock() - desktopLastAt < 6000, nativeInfo,
       current, display, published: Boolean(connected && lastAck), lastSentAt, manualStartedAt,
-      sessions: [...sessions.sessions.values()].map(s => ({ tabId: s.tabId, title: s.title, channel: s.channel, source: s.source, paused: s.paused })),
+      sessions: [...sessions.sessions.values()].map(s => ({ sessionId: s.sessionId, tabId: s.tabId, browser: s.browser, title: s.title, channel: s.channel, source: s.source, paused: s.paused })),
       overlayUrl: `${origin}/overlay#key=${overlayKey}`, extensionPath: path.join(dataDir, 'edge-extension'), appPath: root,
       applicationIdConfigured: Boolean(applicationId), effectiveApplicationId:applicationId, settingsPath: path.join(dataDir, 'config.json'), images:imageList() };
   }

@@ -96,12 +96,12 @@ test('extension relay accepts only top-frame media from the matching service and
   const handlers={},relayed=[];let queried;
   const event=name=>({addListener:fn=>handlers[name]=fn});
   const chrome={runtime:{onMessage:event('message'),onInstalled:event('installed'),onStartup:event('startup')},action:{setBadgeText:async()=>{},setBadgeBackgroundColor:async()=>{},onClicked:event('clicked')},tabs:{onRemoved:event('removed'),onUpdated:event('updated'),query:async query=>(queried=query,[]),sendMessage:async()=>{}},alarms:{clear:async()=>{},create:async()=>{},onAlarm:event('alarm')}};
-  vm.runInNewContext(fs.readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{chrome,URL,importScripts(){},BRIDGE_TOKEN:'test-only',AbortSignal,fetch:async(url,options)=>(relayed.push(JSON.parse(options.body)),{ok:true})});
+  vm.runInNewContext(fs.readFileSync(new URL('../extension/background.js',import.meta.url),'utf8'),{chrome:{...chrome,storage:{local:{get:async()=>({browserId:'11111111-1111-4111-8111-111111111111'})}}},navigator:{userAgent:'Chrome/120'},URL,importScripts(){},BRIDGE_TOKEN:'test-only',AbortSignal,fetch:async(url,options)=>(relayed.push(JSON.parse(options.body)),{ok:true})});
   const sender={url:sample.trackUrl,tab:{id:12,active:true},frameId:0};
   await new Promise(resolve=>handlers.message({kind:'media-presence',session:{...sample,tabId:999}},sender,resolve));
   assert.equal(relayed[0].tabId,12);assert.equal(relayed[0].active,true);
   for(const change of [{url:'https://evil.example/'},{frameId:1},{url:'https://www.youtube.com/watch?v=abc123abc12'}])assert.equal(handlers.message({kind:'media-presence',session:sample},{...sender,...change},()=>{}),undefined);
   assert.equal(relayed.length,1);await handlers.startup();assert.ok(queried.url.includes('https://soundcloud.com/*'));
   handlers.updated(12,{url:sample.trackUrl});assert.equal(relayed.length,1);
-  handlers.updated(12,{url:'https://example.com/'});assert.equal(relayed.at(-1).closed,true);
+  await handlers.updated(12,{url:'https://example.com/'});assert.equal(relayed.at(-1).closed,true);
 });

@@ -1,6 +1,6 @@
 (async()=>{
   const result=window.studioSoundCloudVerification={done:false};
-  const before={sourceMode:latest.config.sourceMode,mode:latest.config.mode,pinnedTabId:latest.config.pinnedTabId};
+  const before={sourceMode:latest.config.sourceMode,mode:latest.config.mode,pinnedSessionId:latest.config.pinnedSessionId};
   const assert=(condition,message)=>{if(!condition)throw Error(message);};
   const wait=async predicate=>{for(let i=0;i<70;i++){if(predicate())return;await new Promise(resolve=>setTimeout(resolve,100));}throw Error('SoundCloud UI wait timed out');};
   try{
@@ -18,7 +18,7 @@
     doc.querySelector('.playbackSoundBadge__titleLink').title='Flickermood';
     doc.querySelector('.playControls__play').classList.remove('playing');
     const paused=reader.read(doc,track);assert(paused.paused,'DOM pause state incorrect');result.realDomReader=true;
-    await api('config',{sourceMode:'auto',mode:'auto',pinnedTabId:null});
+    await api('config',{sourceMode:'auto',mode:'auto',pinnedSessionId:null});
     await api('session',{...track,tabId:987270});await refresh();panel('home');
     assert(latest.current.source==='soundcloud','SoundCloud session not selected');
     assert(latest.display.type===2&&latest.display.image.endsWith('-t500x500.jpg'),'Listening activity or large cover incorrect');

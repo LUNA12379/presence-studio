@@ -40,6 +40,8 @@ Microsoft Edge와 Google Chrome을 모두 지원합니다. 설치 파일에 포�
 
 설치 파일에는 아직 코드 서명이 없어 Windows에서 알 수 없는 게시자 경고가 나올 수 있습니다. 프로젝트의 공식 배포 페이지에서 받은 파일을 사용하세요.
 
+Edge와 Chrome 및 여러 브라우저 프로필을 동시에 사용할 수 있습니다. 2.8.0부터 탭을 브라우저별로 구분합니다. 업데이트 후 모든 브라우저에서 확장 **1.2.0**과 미디어 탭을 새로고침하고 예전에 고정한 탭은 다시 선택하세요. 추가된 `storage` 권한은 무작위 프로필 ID를 로컬에 저장하며 동기화하거나 Discord에 보내지 않습니다.
+
 ## SoundCloud 사용하기
 
 앱 업데이트 후 `edge://extensions` 또는 `chrome://extensions`에서 **Presence Studio — YouTube & SoundCloud** 확장(이전 이름: **YouTube → Discord 활동**)을 새로고침하세요. 브라우저가 SoundCloud 접근 권한을 요청하면 허용한 뒤 SoundCloud 탭도 새로고침하고 곡을 재생하세요.
@@ -89,6 +91,6 @@ Application ID·프리셋·사진·언어 설정은 `%APPDATA%\PresenceStudio`�
 
 **연결 & 설정 → 설명서 보기**에서 설명서를 다시 열 수 있습니다. 이미지 목록이 비었다면 앱에 저장한 ID와 사진을 올린 애플리케이션이 같은지 확인하고, 개발자 페이지에서 저장한 뒤 새로고침하세요.
 
-일반 문제는 [소스 Issues](https://github.com/LUNA12379/presence-studio/issues)에 앱 버전과 재현 순서를 적어 주세요. 아직 소스 저장소에 접근할 수 없다면 [배포 Issues](https://github.com/LUNA12379/presence-studio-releases/issues)를 이용하세요. 보안 문제는 [SECURITY.md](SECURITY.md)의 비공개 신고 안내를 따라 주세요. `config.json`, 생성된 `connection.js`, 개인 오버레이 주소나 개인정보가 담긴 화면은 그대로 첨부하지 마세요.
+일반 문제는 [소스 Issues](https://github.com/LUNA12379/presence-studio/issues)에 앱 버전과 재현 순서를 적어 주세요. 보안 문제는 [SECURITY.md](SECURITY.md)의 비공개 신고 안내를 따라 주세요. `config.json`, 생성된 `connection.js`, 개인 오버레이 주소나 개인정보가 담긴 화면은 그대로 첨부하지 마세요.
 
 Presence Studio는 Discord·Google·YouTube·SoundCloud·Microsoft와 제휴하지 않은 독립 프로젝트입니다.
