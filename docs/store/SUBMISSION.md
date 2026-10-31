@@ -1,6 +1,8 @@
 # Chrome Web Store submission kit
 
-Status: developer-dashboard draft created; **not submitted or published**.
+Status: extension **1.4.0 submitted for Chrome Web Store review on November 1, 2026 (Asia/Seoul)**. The dashboard shows **Pending review**. It is **not yet published**; automatic publication after approval is disabled.
+
+The three data-use certifications were checked against the extension's local playback/pairing transport and public privacy notice, then saved with the maintainer's approval. After approval, publish the staged item within the dashboard's 30-day window, verify the public installation, and enable the release channel as described below.
 
 Assigned extension ID: `gplpaakngmgcpjlkckhiaiohgfhhalfg`. The public store link stays disabled until approval and public launch. Extension **1.4.0** requires Presence Studio **2.9.0+**, Windows 10/11 x64 and the Discord desktop client. Default language is English; Korean is also available. The existing local extension remains supported.
 
