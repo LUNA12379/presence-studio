@@ -1,0 +1,30 @@
+Presence Studio는 브라우저에서 재생하는 영상과 음악을 Windows 앱을 통해 Discord 활동으로 표시합니다.
+
+별도의 Presence Studio 2.9.0 이상 Windows 앱과 Discord 데스크톱 앱이 필요합니다. 이 확장만으로는 동작하지 않습니다. 앱 다운로드:
+https://github.com/LUNA12379/presence-studio-releases/releases/latest
+
+주요 기능
+• YouTube·YouTube Music·SoundCloud 재생 감지
+• 현재 제목·채널 또는 아티스트·표지·재생 시간·일시정지 상태를 내 PC의 앱으로 전달
+• 앱에서 선택한 활동을 Discord와 선택한 데스크톱·OBS 오버레이에 표시
+• Chrome·Edge 및 여러 브라우저 프로필의 탭 구분
+• 영어·한국어 지원
+
+시작하기
+1. Windows 10/11 x64에 Presence Studio를 설치·실행하고 Discord 데스크톱도 켜세요.
+2. 앱 설명서에 따라 Discord Application ID를 저장하세요. Discord 비밀번호·사용자 토큰·봇 토큰은 필요하지 않습니다.
+3. 앱의 연결 & 설정에서 일회용 연결 코드를 만드세요.
+4. 브라우저 도구 모음의 확장 아이콘을 눌러 코드를 입력하고 연결 버튼을 누르세요.
+5. YouTube·YouTube Music·SoundCloud 탭을 새로고침하고 재생하세요. 브라우저 프로필마다 한 번 연결하면 다음 실행에도 유지됩니다.
+
+직접 제어하는 공유
+앱에서 표시할 탭을 고정하거나 제목·아티스트를 제외하고 Discord 활동 공유를 끌 수 있습니다. 재생 정보 전송 자체를 중단하려면 확장을 연결 해제하거나 비활성화하세요. 기존 압축 풀린 확장을 사용했다면 새 확장을 연결한 뒤 기존 확장은 꺼 주세요.
+
+개인정보
+재생 정보는 같은 컴퓨터의 앱으로 전달합니다. 선택한 활동은 앱의 활동 공유 설정에 따라 Discord로 전달됩니다. 광고·분석 기능이 없으며 개발자의 정보 수집 서버로 재생 정보를 보내지 않습니다. 연결 인증 정보는 브라우저 로컬 저장소에 보관하고 계정에 동기화하지 않습니다. 시크릿 모드와 비공개 SoundCloud 링크는 지원하지 않습니다.
+https://github.com/LUNA12379/presence-studio-releases/blob/main/PRIVACY.ko.md
+
+오픈소스
+https://github.com/LUNA12379/presence-studio
+
+Presence Studio는 독립 프로젝트이며 Discord·Google·YouTube·Microsoft·SoundCloud의 공식 제품이나 제휴 서비스가 아닙니다.

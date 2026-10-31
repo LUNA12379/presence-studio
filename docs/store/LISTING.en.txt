@@ -1,0 +1,30 @@
+Presence Studio connects the media you play in your browser to Discord Rich Presence through a companion Windows app.
+
+Requires the separate Presence Studio 2.9.0+ Windows app and the Discord desktop app. This extension does not work on its own. Download the companion app here:
+https://github.com/LUNA12379/presence-studio-releases/releases/latest
+
+What it does
+• Detects playback on YouTube, YouTube Music and SoundCloud.
+• Sends the current title, creator, artwork, progress and pause state to the app on your own PC.
+• Lets the app display your chosen activity on Discord and optional desktop or OBS overlays.
+• Keeps tabs separate across Chrome, Edge and different browser profiles.
+• Offers English and Korean controls.
+
+Getting started
+1. Install and open Presence Studio on Windows 10/11 x64, then open Discord desktop.
+2. Follow the app's guide to save a Discord Application ID. No Discord password, user token or bot token is required.
+3. In the app's Connections & settings, create a one-time pairing code.
+4. Click this extension's toolbar icon, enter the code and choose Connect this browser.
+5. Reload your YouTube, YouTube Music or SoundCloud tab and start playing. Pair once per browser profile; the connection is saved for the next session.
+
+You control sharing
+Choose which tab to show, exclude titles or creators, or turn off Discord activity sharing in the companion app. Disconnect or disable the extension to stop playback reports. If you used the old unpacked extension, turn it off after pairing this version.
+
+Privacy
+Playback metadata is sent to the companion app on the same computer. The chosen activity is shared with Discord only through the app's activity-sharing controls. The extension has no advertising or analytics and does not send playback information to a developer collection server. Pairing credentials stay in local browser storage and are not synced. Incognito mode and private SoundCloud track links are not supported.
+https://github.com/LUNA12379/presence-studio-releases/blob/main/PRIVACY.md
+
+Open source
+https://github.com/LUNA12379/presence-studio
+
+Presence Studio is an independent project and is not affiliated with or endorsed by Discord, Google, YouTube, Microsoft or SoundCloud.

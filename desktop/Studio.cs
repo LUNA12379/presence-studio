@@ -79,7 +79,7 @@ sealed class StudioForm : Form {
         timer.Tick += async delegate { if (Program.ShowEvent != null && Program.ShowEvent.WaitOne(0)) ShowStudio(); await Poll(); };
     }
     async Task EnsureServer() {
-        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.8.3")) return;
+        try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.9.0")) return;
             // Upgrade only this application's v1 bridge, preserving its pairing key.
             if (health.Contains("youtube-discord-local")) {
                 var old = Data.Json.Deserialize<Dictionary<string, object>>(File.ReadAllText(Program.SettingsFile));
@@ -93,7 +93,7 @@ sealed class StudioForm : Form {
         string bundledNode = Path.Combine(Program.Root, "runtime", "node.exe");
         var info = new ProcessStartInfo(File.Exists(bundledNode) ? bundledNode : "node.exe", "\"" + Path.Combine(Program.Root, "server.mjs") + "\"") { UseShellExecute = false, CreateNoWindow = true, WindowStyle = ProcessWindowStyle.Hidden, WorkingDirectory = Program.Root };
         Process.Start(info);
-        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.8.3")) return; } catch {} }
+        for (int i = 0; i < 35; i++) { await Task.Delay(250); try { string health = await http.GetStringAsync(Program.Address + "/api/health"); if (health.Contains("2.9.0")) return; } catch {} }
         throw new Exception(Locale.T("연결 프로그램을 시작하지 못했습니다. Node.js가 설치되어 있는지 확인하세요."));
     }
     async Task Initialize() {
@@ -285,6 +285,19 @@ sealed class StudioForm : Form {
             if(!extensionsFinished||await view.CoreWebView2.ExecuteScriptAsync("!!window.studioExtensionVerification.error")=="true")throw new Exception(await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioExtensionVerification)"));
             File.WriteAllText(Path.Combine(verifyPath,"extensions.json"),await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioExtensionVerification)"));
             await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(Path.Combine(Program.Root,"extension","soundcloud-reader.js")));
+            await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(Path.Combine(Program.Root,"test","ui-store-workflow.js")));
+            bool storeFinished=false;
+            for(int i=0;i<180;i++){
+                await Task.Delay(100);
+                string capture=Data.Json.Deserialize<string>(await view.CoreWebView2.ExecuteScriptAsync("window.studioStoreCapture || null"));
+                if(capture!=null){
+                    using(var stream=File.Create(Path.Combine(verifyPath,capture+".png")))await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
+                    await view.CoreWebView2.ExecuteScriptAsync("window.studioStoreCapture=null");
+                }
+                if(await view.CoreWebView2.ExecuteScriptAsync("window.studioStoreVerification && window.studioStoreVerification.done")=="true"){storeFinished=true;break;}
+            }
+            if(!storeFinished||await view.CoreWebView2.ExecuteScriptAsync("!!window.studioStoreVerification.error")=="true")throw new Exception(await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioStoreVerification)"));
+            File.WriteAllText(Path.Combine(verifyPath,"store.json"),await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioStoreVerification)"));
             await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(Path.Combine(Program.Root,"test","ui-soundcloud-workflow.js")));
             bool soundcloudFinished=false;
             for(int i=0;i<120;i++) {
@@ -328,6 +341,20 @@ sealed class StudioForm : Form {
             File.WriteAllText(Path.Combine(verifyPath,"language-reload.txt"),"English persisted across a full page reload");
             if(await view.CoreWebView2.ExecuteScriptAsync("latest.config.soundcloudApplicationId==='345678901234567890' && document.querySelector('#soundcloudApplicationId').value==='345678901234567890'")!="true")throw new Exception("SoundCloud ID did not survive a full page reload");
             Locale.ReadSettings(Program.SettingsFile);
+            Size previousSize=ClientSize;ClientSize=new Size(1280,800);await Task.Delay(300);
+            await view.CoreWebView2.ExecuteScriptAsync(File.ReadAllText(Path.Combine(Program.Root,"test","ui-store-captures.js")));
+            bool listingFinished=false;
+            for(int i=0;i<100;i++){
+                await Task.Delay(100);
+                string capture=Data.Json.Deserialize<string>(await view.CoreWebView2.ExecuteScriptAsync("window.studioListingCapture || null"));
+                if(capture=="listing-activity-en"||capture=="listing-activity-ko"){
+                    using(var stream=File.Create(Path.Combine(verifyPath,capture+".png")))await view.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,stream);
+                    await view.CoreWebView2.ExecuteScriptAsync("window.studioListingCapture=null");
+                }
+                if(await view.CoreWebView2.ExecuteScriptAsync("window.studioListingVerification && window.studioListingVerification.done")=="true"){listingFinished=true;break;}
+            }
+            if(!listingFinished||await view.CoreWebView2.ExecuteScriptAsync("!!window.studioListingVerification.error")=="true")throw new Exception(await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify(window.studioListingVerification)"));
+            ClientSize=previousSize;
         }
         await view.CoreWebView2.ExecuteScriptAsync("document.querySelector('#guideDialog').close();document.querySelector('[data-panel=home]').click()");
         string result = await view.CoreWebView2.ExecuteScriptAsync("JSON.stringify({title:document.title,ready:!!document.querySelector('#sourceMode'),text:document.body.innerText.slice(0,3500)})");

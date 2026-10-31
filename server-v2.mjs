@@ -13,11 +13,13 @@ import { userDataDirectory, loadUserSettings, saveSettings } from './lib/storage
 import { ImageLibrary, MAX_IMAGE_BYTES, effectiveApplicationId, fetchDiscordAssets } from './lib/images.mjs';
 import { UpdateManager } from './lib/updates.mjs';
 import { ExtensionRegistry, parseExtensionReport } from './lib/extensions.mjs';
+import { BrowserPairings, isExtensionOrigin } from './lib/pairing.mjs';
+import { StoreRelease } from './lib/store-release.mjs';
 export { DEFAULTS, validateConfig } from './lib/settings.mjs';
 
 export const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const execFileAsync = promisify(execFile);
-const VERSION = '2.8.3';
+const VERSION = '2.9.0';
 const EXTENSION_VERSION = JSON.parse(fs.readFileSync(path.join(ROOT, 'extension', 'manifest.json'), 'utf8')).version;
 export function loadSettings(root = ROOT, dataDir = userDataDirectory()) { return loadUserSettings(root, dataDir); }
 function secretMatches(value, expected) {
@@ -39,11 +41,17 @@ function autostartExists(fallback) {
   if (process.platform !== 'win32' || !process.env.APPDATA) return fallback;
   return fs.existsSync(path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Startup', 'YouTube Discord.lnk'));
 }
-export function createBridge({ root = ROOT, dataDir = userDataDirectory(), config = loadSettings(root, dataDir), port = 49832, rpc = new DiscordRPC(), clock = Date.now, assetFetcher = fetchDiscordAssets, updater } = {}) {
+export function createBridge({ root = ROOT, dataDir = userDataDirectory(), config = loadSettings(root, dataDir), port = 49832, rpc = new DiscordRPC(), clock = Date.now, assetFetcher = fetchDiscordAssets, updater, storeRelease = new StoreRelease() } = {}) {
   let repository='';try{repository=JSON.parse(fs.readFileSync(path.join(root,'update-channel.json'),'utf8')).repository||'';}catch{}
   const updates=updater||new UpdateManager({version:VERSION,repository,directory:path.join(dataDir,'updates'),root});
   const sessions = new SessionStore();
   const extensions = new ExtensionRegistry(EXTENSION_VERSION);
+  const pairings = new BrowserPairings(dataDir, clock);
+  function forgetBrowser(id) {
+    const peer = pairings.revoke(id); if (!peer) return;
+    extensions.clients.delete(peer.browserId);
+    for (const key of sessions.sessions.keys()) if (key.startsWith(peer.browserId + ':')) sessions.sessions.delete(key);
+  }
   let activeConfig = validateConfig({}, config);
   let rpcApplicationId = rpc.ready ? effectiveApplicationId(activeConfig) : '', connectionRevision = 0;
   let lastAck, lastSentAt = 0, lastAttempt = 0, lastConnect = 0;
@@ -100,7 +108,9 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
     const { current, display } = resolved();
     const applicationId = effectiveApplicationId(activeConfig, current?.source), connected = rpc.ready && rpcApplicationId === applicationId;
     const extension = extensions.status(clock());
-    return { version: VERSION, update:updates.status(), config: publicConfig, connected, connecting, error: connectionError,
+    const store = storeRelease.status();
+    store.paired = store.published && pairings.list().some(p => p.origin === `chrome-extension://${store.extensionId}`);
+    return { version: VERSION, update:updates.status(), store, browserPairings:pairings.list(), config: publicConfig, connected, connecting, error: connectionError,
       extensionConnected: extension.clients.length > 0, extension,
       desktopConnected: desktopLastAt > 0 && clock() - desktopLastAt < 6000, nativeInfo,
       current, display, published: Boolean(connected && lastAck), lastSentAt, manualStartedAt,
@@ -134,12 +144,12 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
     res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self'; frame-src 'self'; frame-ancestors 'self'; base-uri 'none'; form-action 'self'");
     if (req.headers.host !== `127.0.0.1:${port}`) return respond(res, 403, { error: 'Invalid host' });
     const requestOrigin = req.headers.origin;
-    const extensionOrigin = /^chrome-extension:\/\/[a-p]{32}$/.test(requestOrigin ?? '');
+    const extensionOrigin = isExtensionOrigin(requestOrigin);
     if (requestOrigin && requestOrigin !== origin && !extensionOrigin) return respond(res, 403, { error: 'Invalid origin' });
     let pathname;
     try { pathname = new URL(req.url, origin).pathname; } catch { return respond(res, 400, { error: 'Invalid path' }); }
     if (extensionOrigin) {
-      if (!['/api/session', '/api/extension'].includes(pathname)) return respond(res, 403, { error: 'Extension endpoint only' });
+      if (!['/api/session', '/api/extension', '/api/pairing/claim', '/api/pairing/disconnect'].includes(pathname)) return respond(res, 403, { error: 'Extension endpoint only' });
       res.setHeader('Access-Control-Allow-Origin', requestOrigin); res.setHeader('Vary', 'Origin');
       if (req.method === 'OPTIONS') {
         res.setHeader('Access-Control-Allow-Methods', 'POST'); res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Bridge-Token');
@@ -158,8 +168,27 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       return respond(res, 200, { display: resolved().display, style: activeConfig.overlay, enabled: activeConfig.enabled, language: activeConfig.language });
     }
     if (pathname.startsWith('/api/')) {
+      if (extensionOrigin && req.method === 'POST' && pathname === '/api/pairing/claim') {
+        try { return respond(res, 200, pairings.claim(await jsonBody(req), requestOrigin)); }
+        catch (error) { return respond(res, 400, { error: error.message }); }
+      }
+      if (extensionOrigin && req.method === 'POST' && ['/api/session','/api/extension','/api/pairing/disconnect'].includes(pathname)) {
+        try {
+          const raw = await jsonBody(req), report = parseExtensionReport(raw, pathname !== '/api/session');
+          const peer = pairings.authorize(req.headers['x-bridge-token'], requestOrigin, report.id);
+          const legacy = secretMatches(req.headers['x-bridge-token'], activeConfig.token);
+          if (!peer && !legacy) return respond(res, 401, { error: 'Pairing required' });
+          if (pathname === '/api/pairing/disconnect') { if (peer) forgetBrowser(peer.id); await tick(); return respond(res, 200, { ok:true }); }
+          if (pathname === '/api/session') sessions.update(raw, clock());
+          extensions.update({ ...report, extensionId:requestOrigin.slice('chrome-extension://'.length), connection:peer?'paired':'legacy' }, clock());
+          return respond(res, 200, { ok:true, requiredVersion:EXTENSION_VERSION });
+        } catch (error) { return respond(res, 400, { error:error.message }); }
+      }
       if (!secretMatches(req.headers['x-bridge-token'], activeConfig.token)) return respond(res, 401, { error: 'Pairing required' });
       try {
+        if (req.method === 'POST' && pathname === '/api/pairing/code') return respond(res, 200, pairings.issue());
+        if (req.method === 'POST' && pathname === '/api/pairing/revoke') { forgetBrowser((await jsonBody(req)).id); await tick(); return respond(res, 200, status()); }
+        if (req.method === 'POST' && pathname === '/api/store/check') { await storeRelease.check(); return respond(res, 200, status()); }
         if (req.method === 'GET' && pathname === '/api/status') return respond(res, 200, status());
         if(req.method==='POST'&&pathname==='/api/updates/check')return respond(res,200,await updates.check());
         if(req.method==='POST'&&pathname==='/api/updates/download'){updates.download().catch(()=>{});return respond(res,200,updates.status());}
@@ -241,7 +270,7 @@ export function createBridge({ root = ROOT, dataDir = userDataDirectory(), confi
       const html = fs.readFileSync(path.join(root, 'ui', 'index.html'), 'utf8').replace('__BRIDGE_TOKEN__', activeConfig.token).replace('__LANGUAGE__', activeConfig.language);
       return respond(res, 200, html, 'text/html; charset=utf-8');
     }
-    const assets = { '/extensions.js':['extensions.js','text/javascript'], '/en.json':['en.json','application/json'], '/i18n.js':['i18n.js','text/javascript'], '/updates.js':['updates.js','text/javascript'], '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/crop.js':['crop.js','text/javascript'], '/crop-math.js':['crop-math.js','text/javascript'], '/crop.css':['crop.css','text/css'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
+    const assets = { '/store.js':['store.js','text/javascript'], '/store.css':['store.css','text/css'], '/extensions.js':['extensions.js','text/javascript'], '/en.json':['en.json','application/json'], '/i18n.js':['i18n.js','text/javascript'], '/updates.js':['updates.js','text/javascript'], '/app.js': ['app.js', 'text/javascript'], '/media.js':['media.js','text/javascript'], '/crop.js':['crop.js','text/javascript'], '/crop-math.js':['crop-math.js','text/javascript'], '/crop.css':['crop.css','text/css'], '/guide.js':['guide.js','text/javascript'], '/media-guide.css':['media-guide.css','text/css'], '/style.css': ['style.css', 'text/css'], '/overlay': ['overlay.html', 'text/html'],
       '/overlay.js': ['overlay.js', 'text/javascript'], '/overlay.css': ['overlay.css', 'text/css'], '/icon.svg': ['icon.svg', 'image/svg+xml'] };
     if (assets[pathname]) {
       const [file, type] = assets[pathname]; return respond(res, 200, fs.readFileSync(path.join(root, 'ui', file)), `${type}; charset=utf-8`);

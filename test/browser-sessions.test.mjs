@@ -89,7 +89,7 @@ function worker(storage = {}, userAgent = 'Chrome/120', options = {}) {
   const event = key => ({ addListener: fn => handlers[key] = fn });
   const api = {
     runtime: { getManifest: () => ({ version: '1.3.0' }), onMessage: event('message'), onInstalled: event('installed'), onStartup: event('startup') },
-    storage: { local: { get: async () => { if (fail) { fail = false; throw Error('Storage unavailable'); } return { ...storage }; }, set: async value => { writes++; Object.assign(storage, value); } } },
+    storage: { local: { setAccessLevel: async () => {}, get: async () => { if (fail) { fail = false; throw Error('Storage unavailable'); } return { bridgeCredential: 'test-only', ...storage }; }, set: async value => { writes++; Object.assign(storage, value); } } },
     action: { setBadgeText: async value => badges.push(value.text), setBadgeBackgroundColor: async () => {}, onClicked: event('click') },
     tabs: { onRemoved: event('removed'), onUpdated: event('updated'), query: async () => [{ id: 7 }], sendMessage: async () => { throw Error('No receiver'); } },
     alarms: { clear: async () => {}, create: async () => {}, onAlarm: event('alarm') }

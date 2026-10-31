@@ -1,3 +1,4 @@
+import { EXTENSION_FILES } from '../lib/extension-files.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -14,7 +15,7 @@ const messages=JSON.parse(fs.readFileSync(path.join(ROOT,'ui/en.json'),'utf8'));
 function fixture(t){
   const root=fs.mkdtempSync(path.join(os.tmpdir(),'presence-locale-'));
   fs.mkdirSync(path.join(root,'extension'));
-  for(const file of ['manifest.json','background.js','content.js','soundcloud-reader.js','soundcloud.js'])fs.copyFileSync(path.join(ROOT,'extension',file),path.join(root,'extension',file));
+  for(const file of EXTENSION_FILES){fs.mkdirSync(path.dirname(path.join(root,'extension',file)),{recursive:true});fs.copyFileSync(path.join(ROOT,'extension',file),path.join(root,'extension',file));}
   t.after(()=>{assert.ok(root.startsWith(path.join(os.tmpdir(),'presence-locale-')));fs.rmSync(root,{recursive:true,force:true});});
   return root;
 }

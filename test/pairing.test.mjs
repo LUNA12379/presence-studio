@@ -1,0 +1,81 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { EventEmitter } from 'node:events';
+import { BrowserPairings } from '../lib/pairing.mjs';
+import { createBridge } from '../server.mjs';
+const origin = 'chrome-extension://' + 'a'.repeat(32), otherOrigin = 'chrome-extension://' + 'b'.repeat(32);
+const browserId = '11111111-1111-4111-8111-111111111111', otherBrowser = '22222222-2222-4222-8222-222222222222';
+const report = {browserId, browser:'chrome', extensionVersion:'1.4.0'};
+function directory(t) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(),'presence-pairing-'));
+  t.after(() => { assert.ok(dir.startsWith(path.join(os.tmpdir(),'presence-pairing-'))); fs.rmSync(dir,{recursive:true,force:true}); });
+  return dir;
+}
+test('one-time pairing persists only a hash and is bound to the browser profile and extension', t => {
+  const dir = directory(t), manager = new BrowserPairings(dir,()=>1000);
+  const code = manager.issue(); assert.match(code.code,/^[A-F0-9]{4}(-[A-F0-9]{4}){2}$/);
+  const result = manager.claim({...report,code:code.code.toLowerCase()},origin);
+  assert.ok(manager.authorize(result.token,origin,browserId));
+  assert.equal(manager.authorize(result.token,otherOrigin,browserId),null);
+  assert.equal(manager.authorize(result.token,origin,otherBrowser),null);
+  assert.equal(manager.authorize('bad',origin,browserId),null);
+  assert.throws(()=>manager.claim({...report,code:code.code},origin));
+  assert.ok(!fs.readFileSync(manager.file,'utf8').includes(result.token));
+  assert.ok(!JSON.stringify(manager.list()).includes('hash'));
+  const restarted = new BrowserPairings(dir);
+  assert.ok(restarted.authorize(result.token,origin,browserId));
+  restarted.revoke(restarted.list()[0].id);
+  assert.equal(new BrowserPairings(dir).authorize(result.token,origin,browserId),null);
+});
+test('codes expire, replacements invalidate old codes, and failed attempts are bounded', t => {
+  let now=1000; const manager=new BrowserPairings(directory(t),()=>now);
+  let code=manager.issue(); now+=180000;
+  assert.throws(()=>manager.claim({...report,code:code.code},origin),/만료/);
+  code=manager.issue(); manager.issue(); assert.throws(()=>manager.claim({...report,code:code.code},origin));
+  code=manager.issue(); const wrong = code.code.replace(/^[A-F0-9]/, ch=>ch==='A'?'B':'A');
+  for(let i=0;i<8;i++)assert.throws(()=>manager.claim({...report,code:wrong},origin));
+  assert.throws(()=>manager.claim({...report,code:code.code},origin),/만료/);
+  code=manager.issue();
+  assert.throws(()=>manager.claim({...report,code:code.code},'https://example.com'));
+  assert.throws(()=>manager.claim({code:code.code},origin));
+  const first=manager.claim({...report,code:code.code},origin);
+  const second=manager.claim({...report,code:manager.issue().code},origin);
+  assert.equal(manager.list().length,1); assert.equal(manager.authorize(first.token,origin,browserId),null);
+  assert.ok(manager.authorize(second.token,origin,browserId));
+});
+test('paired credentials can send media but cannot configure the app; revoke clears the live session', async t => {
+  const dataDir=directory(t), token='cd'.repeat(32), port=49859;
+  const rpc=new class extends EventEmitter {ready=false;close(){}}();
+  const bridge=createBridge({dataDir,port,config:{token,applicationId:''},rpc});
+  try {
+    await bridge.start();
+    const request=(endpoint,body,headers={})=>fetch(`http://127.0.0.1:${port}/api/${endpoint}`,{method:body===undefined?'GET':'POST',headers:{'Content-Type':'application/json',...headers},body:body===undefined?undefined:JSON.stringify(body)});
+    assert.equal((await request('pairing/code',{})).status,401);
+    assert.equal((await request('pairing/code',{}, {Origin:origin,'X-Bridge-Token':token})).status,403);
+    const code=await (await request('pairing/code',{}, {'X-Bridge-Token':token})).json();
+    assert.equal((await request('pairing/claim',{...report,code:code.code})).status,401);
+    const paired=await (await request('pairing/claim',{...report,code:code.code},{Origin:origin})).json();
+    assert.match(paired.token,/^[a-f0-9]{64}$/);
+    const headers={Origin:origin,'X-Bridge-Token':paired.token};
+    for(const endpoint of ['config','pairing/code','store/check'])assert.equal((await request(endpoint,{},headers)).status,403);
+    assert.equal((await request('status',undefined,{'X-Bridge-Token':paired.token})).status,401);
+    assert.equal((await request('extension',report,{...headers,Origin:otherOrigin})).status,401);
+    assert.equal((await request('extension',{...report,browserId:otherBrowser},headers)).status,401);
+    assert.equal((await request('extension',report,headers)).status,200);
+    const media={...report,tabId:7,source:'youtube',videoId:'abc123abc12',title:'Pairing test',channel:'Example',position:1,duration:100,paused:false};
+    assert.equal((await request('session',media,headers)).status,200);
+    assert.equal(bridge.status().sessions.length,1);
+    assert.equal(bridge.status().extension.clients[0].connection,'paired');
+    const peer=bridge.status().browserPairings[0];
+    assert.equal((await request('pairing/revoke',{id:peer.id},{'X-Bridge-Token':token})).status,200);
+    assert.equal(bridge.status().sessions.length,0); assert.equal(bridge.status().extensionConnected,false);
+    assert.equal((await request('session',media,headers)).status,401);
+    const nextCode=await (await request('pairing/code',{}, {'X-Bridge-Token':token})).json();
+    const next=await (await request('pairing/claim',{...report,code:nextCode.code},{Origin:origin})).json();
+    assert.equal((await request('pairing/disconnect',report,{Origin:origin,'X-Bridge-Token':next.token})).status,200);
+    assert.equal(bridge.status().browserPairings.length,0);
+  } finally {await bridge.shutdown();}
+});

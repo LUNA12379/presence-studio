@@ -66,14 +66,14 @@ test('authenticated heartbeats work without media and cannot access configuratio
     await bridge.start();
     const origin = 'chrome-extension://' + 'a'.repeat(32);
     const request = (endpoint, body, headers = {}) => fetch(`http://127.0.0.1:${port}/api/${endpoint}`, { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Bridge-Token': token, Origin: origin, ...headers }, body: JSON.stringify(body) });
-    const body = { browserId: edge, browser: 'edge', extensionVersion: '1.3.0' };
+    const required = JSON.parse(fs.readFileSync(path.join(ROOT, 'extension/manifest.json'), 'utf8')).version;
+    const body = { browserId: edge, browser: 'edge', extensionVersion: required };
     assert.equal((await request('extension', body, { 'X-Bridge-Token': 'wrong' })).status, 401);
     assert.equal((await request('extension', body, { Origin: 'https://evil.example' })).status, 403);
     assert.equal((await request('config', { enabled: false })).status, 403);
     assert.equal(bridge.status().extensionConnected, false);
     const response = await request('extension', body);
     assert.equal(response.status, 200);
-    const required = JSON.parse(fs.readFileSync(path.join(ROOT, 'extension/manifest.json'), 'utf8')).version;
     assert.equal((await response.json()).requiredVersion, required);
     assert.equal(bridge.status().extension.requiredVersion, required);
     assert.equal(bridge.status().extensionConnected, true);
@@ -86,7 +86,7 @@ test('authenticated heartbeats work without media and cannot access configuratio
     assert.equal(bridge.status().extension.needsAttention, false);
     assert.equal((await request('session', { ...body, extensionVersion: '<script>', tabId: 7, closed: true })).status, 400);
     assert.equal((await request('session', { ...body, extensionVersion: '1.1.0', tabId: -1, closed: true })).status, 400);
-    assert.equal(bridge.status().extension.clients[0].version, '1.3.0');
+    assert.equal(bridge.status().extension.clients[0].version, required);
     now += STALE_MS + 1;
     assert.equal(bridge.status().extensionConnected, false);
     assert.equal(bridge.status().extension.needsAttention, false);

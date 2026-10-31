@@ -10,7 +10,7 @@ export function git(root, args, options = {}) {
 export function forbiddenPath(name) {
   const value = name.replaceAll('\\', '/').toLowerCase();
   return /(^|\/)(?:\.git|\.cache|\.build|dist|node_modules|images|edge-extension|user-data|runtime)(\/|$)/.test(value)
-    || /(^|\/)(?:config\.json(?:\..*)?|connection\.js|initial-language\.txt|\.env(?:\..*)?)$/.test(value)
+    || /(^|\/)(?:config\.json(?:\..*)?|browser-pairings\.json(?:\..*)?|connection\.js|initial-language\.txt|\.env(?:\..*)?)$/.test(value)
     || /\.(?:exe|dll|pdb|zip|7z|log|pfx|p12|pem|key)$/.test(value);
 }
 const credentialPatterns = [

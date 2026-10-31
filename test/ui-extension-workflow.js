@@ -31,7 +31,7 @@
     assert($('extensionUpdateBanner').hidden && $('extensionReloadHelp').hidden, 'Correct version did not clear the warning');
     assert($('edgeState').classList.contains('green'), 'Matching extension connection remained amber');
     result.reloadClearsWarning = true;
-    await report(chrome, 'chrome', '1.4.0'); await refresh();
+    await report(chrome, 'chrome', '99.0.0'); await refresh();
     assert(!$('extensionAppHelp').hidden && $('extensionReloadHelp').hidden, 'Newer extension must request an app update');
     result.newerExtension = true;
     await api('session', { browserId: edge, browser: 'edge', tabId: 987281, closed: true }); await refresh();

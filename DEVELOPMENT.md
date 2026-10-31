@@ -122,3 +122,16 @@ Settings migration must preserve IDs, keys, language and presets across upgrades
 한국어: Windows에서 Node.js와 .NET Framework를 준비하고 별도 데이터 폴더로
 개발하세요. Node 테스트 → 관련 UI·설치 검증 → 개인정보 검사 → 커밋 순서로
 진행합니다. 공개 배포에는 RELEASING.md의 동일 커밋 소스·설치 파일 절차를 씁니다.
+
+## Store extension build
+
+Run `./Build-StoreExtension.ps1` for the generic store ZIP. It uses the explicit
+`lib/extension-files.mjs` list, validates that the legacy credential is empty,
+and checks known local private values before writing the archive. Never upload
+the generated AppData extension. See [submission kit](docs/store/SUBMISSION.md).
+
+The desktop app prepares a private unpacked copy for existing users. The store
+extension obtains a scoped credential using a one-time local pairing code and
+keeps it in trusted-context-only extension local storage. Test pairing expiry,
+one-time use, restart, revocation, unsupported origins and denied config access.
+Native `--verify` also checks both languages and unreleased/published modal states.

@@ -78,3 +78,15 @@ or embed maintainer credentials. Code signing is a separate future improvement.
 한국어: 공개 전 검사 → 새 버전 커밋 → `Build-Release.ps1` → 설치 검증 순서입니다.
 설치 파일과 같은 커밋의 소스 ZIP, 각각의 해시, 매니페스트를 함께 배포하세요.
 현재 배포 저장소의 자동 업데이트 주소는 유지하며, 이 명령은 로컬 빌드만 합니다.
+
+## Chrome Web Store release
+
+Follow [the submission kit](docs/store/SUBMISSION.md). The generic extension ZIP
+and Windows installer have independent versions. Keep `extension-channel.json`
+in the distribution repository at `published: false` until the store listing is
+approved and publicly installable. After verification, set the real 32-letter
+extension ID and released extension version. The app accepts only this fixed
+channel and derives the store URL from that ID; no remote code is executed.
+Do not publish a stable app/extension update until actual browser pairing and
+reconnection have been verified. A draft GitHub release does not reach the app's
+stable update channel. Store submission and public launch remain separate steps.

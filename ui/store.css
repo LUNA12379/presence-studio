@@ -1,0 +1,14 @@
+.store-pairing { border-top:1px solid var(--border,#30394e); margin-top:22px; padding-top:18px; }
+.store-pairing h4 { margin:0 0 12px; }
+.pairing-code-box { margin-top:14px; padding:14px; background:#101522; border:1px solid #37425a; border-radius:12px; }
+#pairingCode { font-family:Consolas,monospace; font-size:21px; text-align:center; letter-spacing:2px; width:100%; }
+.store-dialog { width:min(520px,calc(100vw - 32px)); background:#181e2b; color:#eef1ff; border:1px solid #3c4760; border-radius:20px; padding:28px; }
+.store-dialog::backdrop { background:#070b14c9; }
+.store-dialog h2 { font-size:23px; line-height:1.3; margin:14px 0; }
+.store-dialog p { font-size:14px; line-height:1.8; color:#aebdd8; }
+.store-dialog .button-row { flex-wrap:wrap; margin-top:20px; }
+.store-action { display:inline-block; padding:11px 15px; border-radius:8px; background:#acb5ff; color:#11172b; text-decoration:none; text-align:center; font-weight:600; }
+.store-action[hidden] { display:none; }
+.store-action:focus-visible { outline:2px solid #e9eeff; outline-offset:3px; }
+.local-extension { margin-top:22px; border-top:1px solid #30394e; padding-top:18px; }
+.local-extension summary { cursor:pointer; color:#b5c5e1; }

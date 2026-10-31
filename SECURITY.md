@@ -23,7 +23,12 @@ version; older releases do not have a separate backport commitment.
 - Configuration, Application IDs, presets, pairing/OBS keys and imported images
   are stored in `%APPDATA%\PresenceStudio` (or `PRESENCE_STUDIO_DATA_DIR`). Updates
   and uninstall preserve this directory. It is not an encrypted secret vault.
-- The generated `edge-extension/connection.js` contains a pairing key. Do not
+- Store extensions use a single-use 3-minute code to obtain a random credential.
+  The app stores only its hash in `browser-pairings.json`, bound to the extension
+  origin and browser profile. It grants playback/heartbeat/disconnect access only;
+  it cannot read or alter application configuration. Disconnect revokes it.
+- The generated private `edge-extension` folder contains a pairing key in its
+  worker and compatibility `connection.js`. Do not
   share or upload that folder. OBS URLs contain a display-only key; anyone who
   can reach the bridge and has that key can read the current overlay. Signed
   image URLs expose the referenced image, so do not publish them either.

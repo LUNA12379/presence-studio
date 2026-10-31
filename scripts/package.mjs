@@ -1,15 +1,15 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { EXTENSION_FILES } from '../lib/extension-files.mjs';
 
 export const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const files = [
   'server.mjs', 'server-v2.mjs', 'package.json', 'config.example.json', 'update-channel.json', 'ui/en.json', 'README.md', 'README.ko.md', '사용방법.txt',
-  'LICENSE', 'COPYING', 'THIRD-PARTY-NOTICES.md',
+  'LICENSE', 'COPYING', 'THIRD-PARTY-NOTICES.md', 'PRIVACY.md', 'PRIVACY.ko.md',
   'DEVELOPMENT.md', 'CONTRIBUTING.md', 'SECURITY.md', 'RELEASING.md',
   'Start.cmd', 'Start.ps1', 'Autostart.ps1', 'Enable-Autostart.cmd', 'Disable-Autostart.cmd',
-  'extension/manifest.json', 'extension/background.js', 'extension/content.js', 'extension/connection.example.js',
-  'extension/soundcloud-reader.js', 'extension/soundcloud.js',
+  ...EXTENSION_FILES.map(file=>'extension/'+file), 'extension/connection.example.js',
   'desktop/Presence Studio.exe', 'desktop/Microsoft.Web.WebView2.Core.dll',
   'desktop/Microsoft.Web.WebView2.WinForms.dll', 'desktop/WebView2Loader.dll',
   'desktop/studio.ico', 'desktop/WebView2-LICENSE.txt', 'desktop/THIRD-PARTY.txt'

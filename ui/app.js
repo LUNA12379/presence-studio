@@ -180,6 +180,7 @@ function render(data) {
   $('edgeState').classList.toggle('version-warning',!!data.extension?.needsAttention);
   if(firstLoad&&data.config.showGuideOnStartup)showGuide();
   if(firstLoad)checkUpdatesAtStartup(data);
+  renderBrowserPairing(data);
 }
 $('nowImage').addEventListener('error',()=>{$('nowImage').dataset.failed=$('nowImage').getAttribute('src');$('nowImage').hidden=true;$('nowPlaceholder').hidden=false;});
 for(const name of ['manualForm','identityForm','settingsForm','overlayForm']) $(name).addEventListener('input',()=>{dirty.add(name);if(name==='manualForm')previewManual();if(name==='identityForm')$('identitySaved').textContent=t('변경한 ID를 저장해 주세요.');});
@@ -220,4 +221,4 @@ async function refresh(){
   try{await queue;if(!current())return;const data=await api('status');if(current()){appliedRefreshSequence=sequence;render(data);}}
   catch{if(current())$('offline').hidden=false;}
 }
-localeReady.then(()=>{initMedia();initGuide();initUpdates();initExtensionVersions();initLanguage();renderStarters();window.addEventListener('resize',fitOverlay);refresh();setInterval(refresh,1500);}).catch(error=>{ $('offline').hidden=false; $('offline').textContent=error.message; });
+localeReady.then(()=>{initMedia();initGuide();initUpdates();initExtensionVersions();initBrowserPairing();initLanguage();renderStarters();window.addEventListener('resize',fitOverlay);refresh();setInterval(refresh,1500);}).catch(error=>{ $('offline').hidden=false; $('offline').textContent=error.message; });

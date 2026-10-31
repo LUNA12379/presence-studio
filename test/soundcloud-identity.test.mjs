@@ -1,3 +1,4 @@
+import { EXTENSION_FILES } from '../lib/extension-files.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
@@ -21,7 +22,7 @@ async function fixture(t,rpc=new RPC()) {
   const directory=fs.mkdtempSync(path.join(os.tmpdir(),'presence-sc-identity-'));
   const root=path.join(directory,'app'),dataDir=path.join(directory,'data');
   fs.mkdirSync(path.join(root,'extension'),{recursive:true});
-  for(const file of ['manifest.json','background.js','content.js','soundcloud-reader.js','soundcloud.js'])fs.copyFileSync(path.join(ROOT,'extension',file),path.join(root,'extension',file));
+  for(const file of EXTENSION_FILES){fs.mkdirSync(path.dirname(path.join(root,'extension',file)),{recursive:true});fs.copyFileSync(path.join(ROOT,'extension',file),path.join(root,'extension',file));}
   const config={...loadSettings(root,dataDir),applicationId:MAIN,customApplicationId:CUSTOM,soundcloudApplicationId:SC};
   let now=100000;
   const port=49855, bridge=createBridge({root,dataDir,config,port,rpc,clock:()=>now});
