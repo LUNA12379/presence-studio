@@ -64,29 +64,74 @@
     await wait(()=>!presetBusy&&latest.config.presets.length===2);
     const restId=$('savedPreset').value;
     assert(restId!==focusId,'New save should add a separate preset');
-    $('savedPreset').value=focusId;$('savedPreset').dispatchEvent(new Event('change',{bubbles:true}));
+    assert(JSON.stringify(latest.config.manual)===publishedManual,'Saving a preset changed the shared activity');
+    const normalApi=api,oldState=await api('status');let releaseOldPoll,pollStarted=false;
+    api=(endpoint,body)=>{if(endpoint==='status'&&!pollStarted){pollStarted=true;return new Promise(resolve=>releaseOldPoll=resolve);}return normalApi(endpoint,body);};
+    const oldPoll=refresh();await wait(()=>pollStarted);
+    try{
+      $('savedPreset').value=focusId;$('savedPreset').dispatchEvent(new Event('change',{bubbles:true}));
+      assert($('savedPreset').disabled,'Preset picker stayed enabled while applying');
+      await wait(()=>!presetBusy&&latest.config.manual.title===focus.title);
+      assert(latest.config.sourceMode==='manual'&&latest.config.enabled,'Selecting a saved preset did not enable the activity');
+      releaseOldPoll(oldState);await oldPoll;
+      assert(latest.config.manual.title===focus.title,'A late status response reverted the selected activity');
+    }finally{releaseOldPoll?.(oldState);api=normalApi;}
+    const currentState=await normalApi('status'),pendingPolls=[];
+    api=(endpoint,body)=>endpoint==='status'?new Promise(resolve=>pendingPolls.push(resolve)):normalApi(endpoint,body);
+    try{
+      const first=refresh();await wait(()=>pendingPolls.length===1);
+      const second=refresh();await wait(()=>pendingPolls.length===2);
+      pendingPolls[0]({...currentState,error:'First slow response'});await first;
+      assert(latest.error==='First slow response','A pending newer poll starved a valid slow response');
+      pendingPolls[1]({...currentState,error:'Second slow response'});await second;
+      const third=refresh();await wait(()=>pendingPolls.length===3);
+      const fourth=refresh();await wait(()=>pendingPolls.length===4);
+      pendingPolls[3]({...currentState,error:'Newest response'});await fourth;
+      pendingPolls[2]({...currentState,error:'Outdated response'});await third;
+      assert(latest.error==='Newest response','An older poll replaced a newer response');
+    }finally{for(const resolve of pendingPolls)resolve(currentState);api=normalApi;render(currentState);}
     for(const [key,value] of Object.entries(focus))assert(getManual()[key]===value,`Loading preset did not restore ${key}`);
     await refresh();
     assert($('savedPreset').value===focusId&&$('manualTitle').value===focus.title,'Status refresh overwrote the loaded preset');
     assert(!$('minutesRow').hidden&&$('manualPreviewTimer').textContent==='45분 남음','Loaded countdown did not update its preview');
-    assert(JSON.stringify(latest.config.manual)===publishedManual,'Saving or loading a preset changed the shared activity');
+    const appliedFocus=JSON.stringify(latest.config.manual);
     $('manualTitle').value='집중 · 50분';$('manualMinutes').value='50';$('manualTitle').dispatchEvent(new Event('input',{bubbles:true}));$('updatePreset').click();
     await wait(()=>!presetBusy&&latest.config.presets.find(p=>p.id===focusId)?.manual.minutes===50);
     assert(latest.config.presets.length===2&&latest.config.presets.find(p=>p.id===focusId).name===focus.title,'Overwrite should keep the original ID and preset name');
-    assert(JSON.stringify(latest.config.manual)===publishedManual,'Overwriting a preset changed the shared activity');
-    $('savedPreset').value=restId;$('savedPreset').dispatchEvent(new Event('change',{bubbles:true}));
+    assert(JSON.stringify(latest.config.manual)===appliedFocus,'Overwriting a preset changed the shared activity');
+    const editedFocus=JSON.stringify(getManual());
+    api=(endpoint,body)=>endpoint==='presets/apply'?Promise.reject(Error('Verification: preset request failed')):normalApi(endpoint,body);
+    try{
+      $('savedPreset').value=restId;$('savedPreset').dispatchEvent(new Event('change',{bubbles:true}));
+      await wait(()=>!presetBusy);
+      assert($('savedPreset').value===focusId&&JSON.stringify(getManual())===editedFocus&&JSON.stringify(latest.config.manual)===appliedFocus,'Failed preset apply changed the selection, editor or activity');
+    }finally{api=normalApi;}
+    let releaseApply,applyCalls=0;
+    api=async(endpoint,body)=>{if(endpoint==='presets/apply'){applyCalls++;await new Promise(resolve=>releaseApply=resolve);}return normalApi(endpoint,body);};
+    try{
+      $('savedPreset').value=restId;$('savedPreset').dispatchEvent(new Event('change',{bubbles:true}));
+      await wait(()=>!!releaseApply);
+      $('savedPreset').dispatchEvent(new Event('change',{bubbles:true}));
+      $('manualState').value='Keep edits while applying';$('manualState').dispatchEvent(new Event('input',{bubbles:true}));
+      releaseApply();await wait(()=>!presetBusy);
+      assert(applyCalls===1&&latest.config.manual.title===rest.title,'Pending selection sent duplicate requests or failed to apply');
+      assert($('manualState').value==='Keep edits while applying','An apply response discarded a newer editor change');
+    }finally{releaseApply?.();api=normalApi;}
+    dirty.delete('manualForm');render(latest);
     assert($('minutesRow').hidden&&$('manualPreviewTimer').textContent===''&&!$('localImage').value&&!$('discordImage').value,'Loading a preset did not clear previous timer and image values');
     panel('presets');
     const restCard=Array.from($('presetsList').children).find(card=>card.querySelector('h3')?.textContent===rest.title);
     Array.from(restCard.querySelectorAll('button')).find(button=>button.textContent==='삭제').click();
     await wait(()=>latest.config.presets.length===1);
     assert($('savedPreset').options.length===2&&!$('savedPreset').value&&$('updatePreset').hidden,'Deleting a selected preset left a stale picker or overwrite action');
-    Array.from($('presetsList').querySelectorAll('button')).find(button=>button.textContent==='불러오기').click();
+    const beforeEditOnly=JSON.stringify(latest.config.manual);
+    Array.from($('presetsList').querySelectorAll('button')).find(button=>button.textContent==='편집만 하기').click();
     assert(!$('panel-custom').hidden&&$('manualTitle').value==='집중 · 50분'&&$('savedPreset').value===focusId,'Gallery load did not open the saved editor');
+    assert(JSON.stringify(latest.config.manual)===beforeEditOnly,'Edit only published an activity');
     assert($('manualForm').autocomplete==='off','Browser suggestions should not be presented as saved presets');
     $('manualForm').requestSubmit();await wait(()=>latest.config.manual.title==='집중 · 50분');
     assert(latest.config.manual.minutes===50&&latest.config.manual.imageId===imageId,'Explicit apply did not publish the loaded preset');
     await loadDiscordImages(true);assert($('localImage').value===imageId&&$('discordImage').value===discordId,'Refreshing Discord images changed a saved selection');
-    window.studioVerification={done:true,imageSaved:true,presetImageSaved:true,presetImmediateList:true,presetAllFieldsRestored:true,presetPollingSafe:true,presetLoadDoesNotPublish:true,presetOverwrite:true,presetDeleteSynced:true,presetGalleryLoad:true,presetExplicitApply:true,presetDuplicateClickSafe:true,guidePreferenceSaved:true,guideReopened:true,emptyListRefreshFixed:true,separateImageSelectionsSaved:true,cropCancelSafe:true,cropAndKeyboardPan:true,containTransparency:true,output1024:true,output512:true,recropPreservesOriginal:true,imageId};
+    window.studioVerification={done:true,imageSaved:true,presetImageSaved:true,presetImmediateList:true,presetImmediateApply:true,presetAllFieldsRestored:true,presetPollingSafe:true,presetStalePollIgnored:true,presetApplyFailureSafe:true,presetInFlightEditsPreserved:true,presetSaveDoesNotPublish:true,presetOverwrite:true,presetDeleteSynced:true,presetGalleryEditOnly:true,presetExplicitApply:true,presetDuplicateClickSafe:true,guidePreferenceSaved:true,guideReopened:true,emptyListRefreshFixed:true,separateImageSelectionsSaved:true,cropCancelSafe:true,cropAndKeyboardPan:true,containTransparency:true,output1024:true,output512:true,recropPreservesOriginal:true,imageId};
   }catch(error){window.studioVerification={done:true,error:error.stack||error.message};}
 })();

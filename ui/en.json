@@ -227,7 +227,6 @@
   "삭제": "Delete",
   "프리셋을 삭제했어요.": "Preset deleted.",
   "30개를 모두 사용 중이에요. 기존 항목을 덮어쓰거나 프리셋 메뉴에서 삭제하세요.": "All 30 slots are in use. Overwrite a preset or delete one in the Presets menu.",
-  "목록에서 고르면 편집 내용이 불러와져요. Discord에 표시하려면 ‘이 활동으로 표시하기’를 누르세요.": "Select a preset to load it into the editor. Click 'Show this activity' to share it on Discord.",
   "아직 저장한 프리셋이 없어요. 활동을 꾸민 뒤 위 저장 버튼을 눌러 보세요.": "No presets yet. Customize an activity, then click the save button above.",
   "{name} 프리셋을 불러왔어요.": "Loaded preset: {name}.",
   "저장한 프리셋을 선택하세요": "Choose a saved preset",
@@ -265,7 +264,6 @@
   "이미지": "Images",
   "이름과 아이콘": "Names & icons",
   "저장하고, 목록에서 꺼내 쓰세요": "Save it, then pick it from the list",
-  "<ol><li><b>직접 꾸미기</b>에서 활동을 만든 뒤 <b>프리셋으로 저장</b>을 누르세요. 현재 활동 제목을 이름으로 저장해요.</li><li>버튼 아래 <b>저장한 프리셋</b> 목록에 바로 추가돼요. 선택하면 제목·상태·사진·타이머·링크를 함께 불러와요.</li><li>미리보기를 확인하고 <b>이 활동으로 표시하기</b>를 누르면 Discord와 오버레이에 적용돼요.</li><li>내용을 고친 뒤 <b>선택한 프리셋 덮어쓰기</b>를 누르면 기존 이름으로 갱신돼요. <b>프리셋으로 저장</b>은 새 항목을 추가해요.</li></ol><div class=\"guide-note\">최대 30개를 저장하며 앱·PC를 다시 켜도 유지돼요. 불러오기·저장만으로 현재 공유 중인 활동이 바뀌지는 않아요. 타이머는 활동을 적용할 때 새로 시작해요.</div><p class=\"hint\"><b>프리셋</b> 메뉴에서는 바로 적용하거나 삭제할 수 있어요. 이전에 저장한 프리셋도 그대로 사용할 수 있습니다.</p>": "<ol><li>Create an activity in <b>Customize</b> and click <b>Save as preset</b>. The activity title becomes its name.</li><li>It appears immediately in <b>Saved presets</b> below the button. Selecting it loads the title, status, images, timer and link.</li><li>Check the preview, then click <b>Show this activity</b> to apply it to Discord and overlays.</li><li>After editing, use <b>Overwrite selected preset</b> to update the same entry. <b>Save as preset</b> creates a new entry.</li></ol><div class=\"guide-note\">Keep up to 30 presets across app and PC restarts. Loading or saving alone does not change the activity you are sharing. Applying an activity starts its timer again.</div><p class=\"hint\">Use the <b>Presets</b> menu to apply or delete entries. Existing presets and your own text stay unchanged when switching languages.</p>",
   "새 버전도 앱에서 확인해요": "Check for new versions in the app",
   "설치와 업데이트": "Install & update",
   "내 화면과 방송 화면까지": "On your screen and on stream",
@@ -467,5 +465,9 @@
   "Discord 활동": "Discord activity",
   "Discord 활동 카드의 이미지예요. 적용하려면 ‘이 활동으로 표시하기’를 누르세요.": "This is the Discord activity image. Click “Show this activity” to apply it.",
   "앱·데스크톱·OBS에 표시할 이미지예요. 두 미리보기는 서로 다른 사진을 사용할 수 있어요.": "This image appears in the app, desktop and OBS overlays. The two previews can use different images.",
-  "기본 앱 이미지는 Discord에서 확인할 수 있어요. 적용하려면 ‘이 활동으로 표시하기’를 누르세요.": "Check the default app image in Discord. Click “Show this activity” to apply it."
+  "기본 앱 이미지는 Discord에서 확인할 수 있어요. 적용하려면 ‘이 활동으로 표시하기’를 누르세요.": "Check the default app image in Discord. Click “Show this activity” to apply it.",
+  "<ol><li><b>직접 꾸미기</b>에서 활동을 만든 뒤 <b>프리셋으로 저장</b>을 누르세요. 현재 활동 제목을 이름으로 저장해요.</li><li>버튼 아래 <b>저장한 프리셋</b> 목록에서 선택하면 제목·상태·사진·타이머·링크가 Discord와 오버레이에 바로 적용돼요. 활동 공유가 켜지고 타이머도 새로 시작해요.</li><li>공유하지 않고 수정하려면 <b>프리셋</b> 메뉴의 <b>편집만 하기</b>를 누르세요. 편집한 내용은 <b>이 활동으로 표시하기</b>로 적용해요.</li><li><b>선택한 프리셋 덮어쓰기</b>는 기존 이름으로 저장하고, <b>프리셋으로 저장</b>은 새 항목을 추가해요. 저장만으로 현재 활동이 바뀌지는 않아요.</li></ol><div class=\"guide-note\">최대 30개를 저장하며 앱·PC를 다시 켜도 유지돼요. 목록에서 선택하면 바로 공유되므로 제목과 사진을 확인해 주세요. 이전에 저장한 프리셋도 그대로 사용할 수 있어요.</div>": "<ol><li>Create an activity in <b>Customize</b> and click <b>Save as preset</b>. The activity title becomes its name.</li><li>Select an entry from <b>Saved presets</b> to immediately apply its title, status, images, timer and link to Discord and overlays. This enables activity sharing and restarts the timer.</li><li>To edit without sharing, use <b>Presets → Edit only</b>. Apply your edits with <b>Show this activity</b>.</li><li><b>Overwrite selected preset</b> saves under the existing name, while <b>Save as preset</b> adds a new entry. Saving alone does not change your current activity.</li></ol><div class=\"guide-note\">Keep up to 30 presets across app and PC restarts. Selecting an entry immediately shares it, so check its title and images first. Existing presets remain compatible.</div>",
+  "목록에서 선택하면 Discord와 오버레이에 바로 적용돼요. 편집만 하려면 프리셋 메뉴의 ‘편집만 하기’를 누르세요.": "Selecting a preset immediately applies it to Discord and overlays. To edit without sharing, use Edit only on the Presets page.",
+  "프리셋을 적용하는 중…": "Applying preset…",
+  "편집만 하기": "Edit only"
 }

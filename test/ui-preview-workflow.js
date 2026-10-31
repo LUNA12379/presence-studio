@@ -12,7 +12,7 @@
     const preset=original.presets.find(p=>p.manual.imageId&&p.manual.discordAssetId);
     assert(!!preset,'Image preset fixture is missing');
     panel('custom');await wait(()=>!$('refreshDiscordImages').disabled);
-    change('savedPreset',preset.id);
+    loadPreset(preset.id);
     const local=preset.manual.imageId,otherLocal=imageCatalog.find(image=>image.id!==local);
     const otherDiscord=discordAssets.find(asset=>asset.id!==preset.manual.discordAssetId);
     assert(!!otherLocal&&!!otherDiscord,'Alternate image fixtures are missing');
@@ -44,7 +44,7 @@
     assert($('localImage').value===otherLocal.id,'Default Discord selection cleared the local image');
     change('discordImage',otherDiscord.id);await wait(loaded);
     $('updatePreset').click();await wait(()=>!presetBusy&&latest.config.presets.find(p=>p.id===preset.id).manual.discordAssetId===otherDiscord.id);
-    change('savedPreset',preset.id);
+    loadPreset(preset.id);
     assert($('localImage').value===otherLocal.id&&$('discordImage').value===otherDiscord.id,'Reloading the overwritten preset lost image edits');
     $('manualForm').requestSubmit();await wait(()=>latest.config.manual.discordAssetId===otherDiscord.id);
     assert(latest.config.manual.imageId===otherLocal.id,'Applying the edited preset lost its local image');

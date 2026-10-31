@@ -2,7 +2,8 @@ const token = document.querySelector('meta[name="bridge-token"]').content;
 const $ = id => document.getElementById(id);
 const dirty = new Set(), hydrated = new Set();
 let latest, timerNotice, overlayTimer, stopping = false, sessionsSignature = '', presetsSignature = '', queue = Promise.resolve();
-let selectedPresetId = '', presetBusy = false;
+let selectedPresetId = '', presetBusy = false, presetApplying = false;
+let stateGeneration = 0, refreshSequence = 0, appliedRefreshSequence = 0;
 let languageBusy = false;
 function refreshLanguageUI() {
   const active = document.querySelector('.nav.active');
@@ -36,7 +37,7 @@ async function api(endpoint, body) {
   const response = await fetch(`/api/${endpoint}`, { method: body === undefined ? 'GET' : 'POST', headers: { 'X-Bridge-Token': token, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) }, body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(15000) });
   const data = await response.json(); if (!response.ok) throw new Error(data.error || t('연결을 확인해 주세요.')); return data;
 }
-function mutate(endpoint, body) { const request = queue.then(() => api(endpoint, body)); queue = request.catch(() => {}); return request; }
+function mutate(endpoint, body) { stateGeneration++; const request = queue.then(() => api(endpoint, body)); queue = request.catch(() => {}); return request; }
 function panel(name) { if (!names[name]) return; document.querySelectorAll('.panel').forEach(item => { item.hidden = item.id !== `panel-${name}`; }); document.querySelectorAll('.nav').forEach(item => item.classList.toggle('active', item.dataset.panel === name)); $('pageName').textContent = t(names[name]); window.scrollTo(0, 0); if (name === 'overlay') fitOverlay(); if(name==='custom'&&latest&&!assetsApplicationId&&!$('refreshDiscordImages').disabled)loadDiscordImages(); }
 document.querySelectorAll('[data-panel]').forEach(button => button.addEventListener('click', () => panel(button.dataset.panel)));
 function getManual() { return { title: $('manualTitle').value.trim(), state: $('manualState').value.trim(), type: $('manualType').value, imageUrl: $('manualImage').value.trim(), ...mediaFields(), buttonLabel: $('manualButtonLabel').value.trim(), buttonUrl: $('manualButtonUrl').value.trim(), timer: $('manualTimer').value, minutes: Number($('manualMinutes').value) }; }
@@ -85,8 +86,8 @@ function renderSessions(data) {
 function presetCard(p, starter=false) {
   const card=document.createElement('article');card.className='card preset-card';const icon=document.createElement('div');icon.className='preset-symbol';icon.textContent=starter?p.symbol:'◇';const title=document.createElement('h3');title.textContent=p.name;const subtitle=document.createElement('p');subtitle.textContent=p.manual.title+(p.manual.state?' · '+p.manual.state:'');
   const actions=document.createElement('div');actions.className='button-row';const apply=document.createElement('button');apply.className=starter?'':'primary';apply.textContent=starter?t('이 내용으로 꾸미기'):t('바로 적용');
-  apply.onclick=async()=>{if(starter){selectedPresetId='';dirty.add('manualForm');setManual(p.manual);updatePresetControls();panel('custom');return;}try{const result=await mutate('presets/apply',{id:p.id});selectedPresetId=p.id;dirty.delete('manualForm');render(result);notify(t('{name} 활동으로 바꿨어요.', {name:p.name}));}catch(e){notify(t(e.message));}};actions.append(apply);
-  if(!starter){const edit=document.createElement('button');edit.textContent=t('불러오기');edit.onclick=()=>{loadPreset(p.id);panel('custom');};const remove=document.createElement('button');remove.textContent=t('삭제');remove.onclick=async()=>{try{render(await mutate('presets/delete',{id:p.id}));notify(t('프리셋을 삭제했어요.'));}catch(e){notify(t(e.message));}};actions.append(edit,remove);}card.append(icon,title,subtitle,actions);return card;
+  apply.onclick=()=>{if(starter){if(presetBusy)return;selectedPresetId='';dirty.add('manualForm');setManual(p.manual);updatePresetControls();panel('custom');return;}return applySavedPreset(p.id);};actions.append(apply);
+  if(!starter){const edit=document.createElement('button');edit.textContent=t('편집만 하기');edit.onclick=()=>{loadPreset(p.id);panel('custom');};const remove=document.createElement('button');remove.textContent=t('삭제');remove.onclick=async()=>{try{render(await mutate('presets/delete',{id:p.id}));notify(t('프리셋을 삭제했어요.'));}catch(e){notify(t(e.message));}};actions.append(edit,remove);for(const button of actions.children)button.dataset.presetAction='';}card.append(icon,title,subtitle,actions);return card;
 }
 function updatePresetControls() {
   const presets=latest?.config.presets||[], selected=presets.find(p=>p.id===selectedPresetId);
@@ -97,13 +98,33 @@ function updatePresetControls() {
   $('savePreset').disabled=presetBusy||presets.length>=30;
   $('updatePreset').hidden=!selected;
   $('updatePreset').disabled=presetBusy;
-  $('presetStatus').textContent=presets.length>=30?t('30개를 모두 사용 중이에요. 기존 항목을 덮어쓰거나 프리셋 메뉴에서 삭제하세요.'):presets.length?t('목록에서 고르면 편집 내용이 불러와져요. Discord에 표시하려면 ‘이 활동으로 표시하기’를 누르세요.'):t('아직 저장한 프리셋이 없어요. 활동을 꾸민 뒤 위 저장 버튼을 눌러 보세요.');
+  document.querySelectorAll('[data-preset-action]').forEach(button=>button.disabled=presetBusy);
+  $('presetStatus').textContent=presetApplying?t('프리셋을 적용하는 중…'):presets.length?t('목록에서 선택하면 Discord와 오버레이에 바로 적용돼요. 편집만 하려면 프리셋 메뉴의 ‘편집만 하기’를 누르세요.'):t('아직 저장한 프리셋이 없어요. 활동을 꾸민 뒤 위 저장 버튼을 눌러 보세요.');
+  if(!presetApplying&&presets.length>=30)$('presetStatus').textContent+=' '+t('30개를 모두 사용 중이에요. 기존 항목을 덮어쓰거나 프리셋 메뉴에서 삭제하세요.');
 }
 function loadPreset(id) {
+  if(presetBusy)return;
   const preset=latest?.config.presets.find(p=>p.id===id);
   if(!preset){selectedPresetId='';updatePresetControls();return;}
   selectedPresetId=preset.id;dirty.add('manualForm');setManual(preset.manual);updatePresetControls();
   notify(t('{name} 프리셋을 불러왔어요.', {name:preset.name}));
+}
+async function applySavedPreset(id) {
+  if(presetBusy)return;
+  const preset=latest?.config.presets.find(p=>p.id===id);
+  if(!preset){updatePresetControls();return;}
+  const previousId=selectedPresetId,before=JSON.stringify(getManual()),wasDirty=dirty.has('manualForm');
+  presetBusy=true;presetApplying=true;selectedPresetId=preset.id;dirty.add('manualForm');updatePresetControls();
+  try{
+    const result=await mutate('presets/apply',{id:preset.id});
+    // Keep edits made while the request was in flight; otherwise show the applied preset.
+    if(JSON.stringify(getManual())===before)dirty.delete('manualForm');
+    render(result);notify(t('{name} 활동으로 바꿨어요.', {name:preset.name}));
+  }catch(error){
+    selectedPresetId=previousId;
+    if(!wasDirty&&JSON.stringify(getManual())===before)dirty.delete('manualForm');
+    notify(t(error.message));
+  }finally{presetBusy=false;presetApplying=false;updatePresetControls();}
 }
 function renderPresets(data) {
   const presets=data.config.presets,signature=JSON.stringify([uiLanguage,presets]);
@@ -170,7 +191,7 @@ $('manualForm').addEventListener('submit',async event=>{event.preventDefault();t
 $('restartTimer').onclick=async()=>{try{render(await mutate('timer/restart',{}));notify(t('타이머를 다시 시작했어요.'));}catch(e){notify(t(e.message));}};
 $('savePreset').onclick=()=>savePreset();
 $('updatePreset').onclick=()=>savePreset(true);
-$('savedPreset').onchange=()=>loadPreset($('savedPreset').value);
+$('savedPreset').onchange=()=>applySavedPreset($('savedPreset').value);
 $('identityForm').addEventListener('submit',async event=>{
   event.preventDefault();$('saveApplicationId').disabled=true;$('identitySaved').textContent=t('저장 중…');
   try{const result=await mutate('config',{applicationId:$('applicationId').value.trim(),customApplicationId:$('customApplicationId').value.trim(),soundcloudApplicationId:$('soundcloudApplicationId').value.trim()});dirty.delete('identityForm');render(result);$('identitySaved').textContent=t('이 PC에 저장했어요. 앱을 다시 켜도 자동으로 불러옵니다.');notify(t('Application ID를 저장했어요. Discord 연결을 확인합니다.'));}
@@ -192,5 +213,11 @@ $('starterPresets').replaceChildren();
 const starters=[{name:t('집중 모드'),symbol:'⌘',title:t('작업에 집중하는 중'),state:t('음악과 함께, 한 가지씩'),timer:'countdown',minutes:25},{name:t('잠깐 쉬는 시간'),symbol:'☕',title:t('잠시 쉬어 가는 중'),state:t('커피 한 잔의 여유'),timer:'elapsed',minutes:10},{name:t('오늘의 게임'),symbol:'✦',title:t('좋아하는 게임을 플레이 중'),state:t('나만의 플레이 타임'),timer:'elapsed',minutes:60}];
 for(const s of starters)$('starterPresets').append(presetCard({name:s.name,symbol:s.symbol,manual:{title:s.title,state:s.state,type:'playing',imageUrl:'',buttonLabel:'',buttonUrl:'',timer:s.timer,minutes:s.minutes}},true));
 }
-async function refresh(){if(stopping)return;try{render(await api('status'));}catch{$('offline').hidden=false;}}
+async function refresh(){
+  if(stopping)return;
+  const generation=stateGeneration,sequence=++refreshSequence;
+  const current=()=>generation===stateGeneration&&sequence>appliedRefreshSequence&&!stopping;
+  try{await queue;if(!current())return;const data=await api('status');if(current()){appliedRefreshSequence=sequence;render(data);}}
+  catch{if(current())$('offline').hidden=false;}
+}
 localeReady.then(()=>{initMedia();initGuide();initUpdates();initExtensionVersions();initLanguage();renderStarters();window.addEventListener('resize',fitOverlay);refresh();setInterval(refresh,1500);}).catch(error=>{ $('offline').hidden=false; $('offline').textContent=error.message; });
