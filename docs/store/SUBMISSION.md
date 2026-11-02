@@ -1,10 +1,10 @@
 # Chrome Web Store submission kit
 
-Status: extension **1.4.0 submitted for Chrome Web Store review on November 1, 2026 (Asia/Seoul)**. The dashboard shows **Pending review**. It is **not yet published**; automatic publication after approval is disabled.
+Status: extension **1.4.0 approved and published on November 3, 2026 (Asia/Seoul)**. The dashboard confirmed **Published — Public**, and the [public Chrome Web Store listing](https://chromewebstore.google.com/detail/gplpaakngmgcpjlkckhiaiohgfhhalfg) shows the installation button and version 1.4.0. It was submitted for review on November 1, 2026 and published manually after approval.
 
-The three data-use certifications were checked against the extension's local playback/pairing transport and public privacy notice, then saved with the maintainer's approval. After approval, publish the staged item within the dashboard's 30-day window, verify the public installation, and enable the release channel as described below.
+The three data-use certifications were checked against the extension's local playback/pairing transport and public privacy notice, then saved with the maintainer's approval. The public release channel enables the installation reminder in desktop 2.9.0 without changing the installer. Keep that channel aligned with the publicly available extension version.
 
-Assigned extension ID: `gplpaakngmgcpjlkckhiaiohgfhhalfg`. The public store link stays disabled until approval and public launch. Extension **1.4.0** requires Presence Studio **2.9.0+**, Windows 10/11 x64 and the Discord desktop client. Default language is English; Korean is also available. The existing local extension remains supported.
+Assigned extension ID: `gplpaakngmgcpjlkckhiaiohgfhhalfg`. Extension **1.4.0** requires Presence Studio **2.9.0+**, Windows 10/11 x64 and the Discord desktop client. Default language is English; Korean is also available. The existing local extension remains supported; disable it after connecting the store copy in the same browser profile.
 
 ## Files and links
 
